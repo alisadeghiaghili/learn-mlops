@@ -20,7 +20,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      # No cache while the app is absent (no lock file yet); cache: npm once it lands.
       - name: Setup Node
+        if: hashFiles('package.json') == ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Setup Node (npm cache)
+        if: hashFiles('package.json') != ''
         uses: actions/setup-node@v4
         with:
           node-version: 22
