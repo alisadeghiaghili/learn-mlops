@@ -1,0 +1,58 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # App build path — activates once Phase 3 lands package.json + package-lock.json.
+      - name: Install dependencies
+        if: hashFiles('package.json') != ''
+        run: npm ci
+      - name: Test
+        if: hashFiles('package.json') != ''
+        run: npm test
+      - name: Build
+        if: hashFiles('package.json') != ''
+        run: npm run build
+      # Until the app exists, deploy the static placeholder so the site is live immediately.
+      - name: Build placeholder
+        if: hashFiles('package.json') == ''
+        run: |
+          mkdir -p dist
+          cp -r site/* dist/
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
