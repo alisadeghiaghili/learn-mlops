@@ -111,6 +111,33 @@ export const faLevels: Record<string, LevelCopy> = {
       },
     ],
   },
+  'eval-1': {
+    seriesTitle: 'آموزش و ثبت',
+    name: 'ارزیابی: runها را مقایسه کنید، بهترین را ترفیع دهید',
+    objective:
+      'با فرضِ اینکه `exp-1` روی `train@1` train شده است، یک آزمایشِ دومِ `exp-2` اجرا کنید، دو run را مقایسه کنید و بهترین را به‌عنوان `churn-model` register کنید.',
+    learning: [
+      'ارزیابی یعنی انتخاب یک مدل از روی یک توزیعِ runها، نه از روی یک عددِ خوش‌شانس',
+      'مرحله‌ی `eval` همان‌جایی است که متریک‌ها (acc/loss/f1) را پیش از ترفیع، بین runها مقایسه می‌کنید',
+      'register کردنِ challenger همان تصمیمِ ترفیع است — مقایسه چیزی است که آن را توجیه می‌کند',
+    ],
+    fieldNotes: [
+      'runها را روی یک متریکِ held-out مقایسه کنید، هرگز روی متریکِ train',
+      'بهترین runی که می‌بینید، عملکردِ واقعی را بیش‌برآورد می‌کند (winner’s curse) — تکرار کنید تا واریانس را ببینید',
+    ],
+    startDialog: [
+      {
+        title: 'یک run یک نمونه است، نه پاسخ',
+        markdown:
+          '`exp-1` روی `train@1` train شده است. ارزیابی واقعی یعنی اجرا کردنِ نسخه‌های مختلف و مقایسه‌ی آن‌ها.\n\n```\nml train run -n exp-2 -p lr=0.05 -p depth=60\nml model register exp-2 --name churn-model\n```\n\nدو run روی همان داده، دو نمونه از همان مدل‌اند. register کردنِ بهترین، آن تصمیم است.',
+      },
+      {
+        title: 'پیش از ترفیع، مقایسه کنید',
+        markdown:
+          'مرحله‌ی `eval` برای این وجود دارد که ترفیع یک *مقایسه* باشد، نه یک سکه‌پرن.\n\n`exp-1` و `exp-2` دو نقطه‌اند؛ به متریک‌هایشان نگاه می‌کنید، آن را که نتایجِ held-out بهتری دارد انتخاب می‌کنید و register می‌کنید. این کلِ قدمِ eval به زبان تولید است.',
+      },
+    ],
+  },
   'deploy-1': {
     seriesTitle: 'سرویس و حفاظت',
     name: 'deploy کردن یک مدلِ ثبت‌شده',
@@ -189,6 +216,60 @@ export const faLevels: Record<string, LevelCopy> = {
         title: 'چرا این یک مهارت است',
         markdown:
           'هرکس می‌تواند deploy کند. حرکتِ حرفه‌ای *ارتقا و بازگشتِ تمیز* است.\n\nچون rollback target در هنگام deploy ثبت شده، هرگز حدس نمی‌زنید نسخه‌ی قدیمی کدام است — دقیقاً همان را که سرویس می‌داده برمی‌گردانید. این همان تورباز است که کل حلقه‌ی MLOps حول آن ساخته شده.',
+      },
+    ],
+  },
+  'canary-1': {
+    seriesTitle: 'سرویس و حفاظت',
+    name: 'ترفیعِ champion / challenger',
+    objective:
+      'یک آزمایشِ challenger اجرا کنید، آن را به‌عنوان `churn-model:v2` register کنید و deploy کنید تا `prod` روی `v2` زنده باشد، در حالی که `v1` به‌عنوان rollback target ثبت می‌شود — همان ترفیعِ champion/challenger.',
+    learning: [
+      'champion/challenger یک آزمایشِ زنده است: challenger یک نسخه‌ی مشخص است، نه یک گروهِ کنترلِ تصادفی',
+      'ترفیع یک تصمیم است — challenger را فقط deploy کنید وقتی حاضرید هزینه‌ی یک regression را تحمل کنید',
+      'deploy کردنِ challenger، champion را به rollback target تنزل می‌دهد: تورباز همان لحظه‌ی تعویض ثبت می‌شود',
+    ],
+    fieldNotes: [
+      'challengerی که در «یک» مجموعه‌ی آزمایشی می‌برد، می‌تواند همان winner’s curse باشد — روی داده‌ی held-out مقایسه کنید',
+      'champion را به‌عنوان rollback target نگه دارید تا یک regression یک‌فرمانِ revert باشد',
+    ],
+    startDialog: [
+      {
+        title: 'challenger را ترفیع دهید، تورباز را نگه دارید',
+        markdown:
+          '`churn-model:v1` champion است و روی `prod` زنده است. یک challenger دارید. آن را بسازید و ترفیع دهید:\n\n```\nml train run -n exp-2 -p lr=0.05 -p depth=60\nml model register exp-2 --name churn-model   # → churn-model:v2 (challenger)\nml deploy churn-model:2                      # v2 زنده، v1 → rollback target\n```\n\nchampion حذف نمی‌شود — همان لحظه‌ای که challenger جانشین می‌شود، به rollback target تبدیل می‌گردد.',
+      },
+      {
+        title: 'چرا هدف همان لحظه‌ی تعویض ثبت می‌شود',
+        markdown:
+          'ترفیع دقیقا‌ به این دلیل پرخطر است که challenger هرگز ترافیکِ واقعی ندیده است. چون `ml deploy churn-model:2` نسخه‌ی `v1` را به‌عنوان rollback target *پیش از* تعویض ثبت می‌کند، یک challenger ضعیف یک‌فرمانِ revert است، نه یک retrain.',
+      },
+    ],
+  },
+  'retrain-1': {
+    seriesTitle: 'سرویس و حفاظت',
+    name: 'پاسخ به drift: retrain و deploy دوباره',
+    objective:
+      'حلقه را ببندید: داده‌ی تازه (`v2`) را بیارید، روی آن دوباره train کنید، `churn-model:v2` را register کنید و deploy کنید تا `prod` مدلِ تازه‌شده را سرویس بدهد — همان پاسخِ drift → retrain → redeploy.',
+    learning: [
+      'drift یک جابه‌جاییِ توزیع است: مدل روی `train@1` fit شده، اما داده‌ی زنده به `v2` رفته است',
+      'retrain یک *عملگرِ حلقه‌بسته* است — همان سیگنالِ driftِ monitor چیزی است که آن را تحریک می‌کند',
+      'پاسخ این است که روی *نسخه‌ی جدیدِ* داده دوباره train و دوباره deploy کنید و مدلِ قدیمی را به‌عنوان rollback target ثبت کنید',
+    ],
+    fieldNotes: [
+      'روی داده‌ی driftکرده دوباره train کنید — مدلی که روی `train@1` fit شده، نمی‌تواند دنباله‌روِ توزیعی باشد که هرگز ندیده',
+      'deploy دوباره، مدلِ قبلی را به‌عنوان rollback target ثبت می‌کند تا یک retrainِ ضعیف قابل‌برگشت بماند',
+    ],
+    startDialog: [
+      {
+        title: 'حلقه همین‌جاست بسته می‌شود',
+        markdown:
+          '`churn-model:v1` روی `prod` زنده است، اما داده drift کرده است. پاسخ این است که روی داده‌ی تازه دوباره train و دوباره deploy کنید:\n\n```\nml data add data/train.csv          # → train@v2 (داده‌ی driftکرده)\nml train run -n exp-2 -p lr=0.05 -p depth=60   # retrain روی train@v2\nml model register exp-2 --name churn-model      # → churn-model:v2\nml deploy churn-model:2                # v2 زنده، v1 → rollback target\n```\n\nاین همان یالِ monitor → ingest/train است: کلِ حلقه، بسته.',
+      },
+      {
+        title: 'چرا retrain، نه فقط deploy دوباره',
+        markdown:
+          'نمی‌توانید drift را با deploy دوباره‌ی همان مدل رفع کنید — آن روی `train@1` fit شده و هرگز `v2` را ندیده است. retrain روی نسخه‌ی جدید همان چیزی است که به مدل اجازه می‌دهد دنباله‌روِ توزیع شود. deploy دوباره سپس `v1` را به‌عنوان rollback target ثبت می‌کند تا یک retrainِ ضعیف یک‌فرمانِ revert باشد.',
       },
     ],
   },

@@ -151,6 +151,47 @@ const modelLevels: LevelDef[] = [
     goal: { kind: 'allOf', checks: [{ kind: 'modelRegistered', name: 'churn-model' }] },
     solution: ['ml model register exp-1 --name churn-model'],
   },
+  {
+    id: 'eval-1',
+    series: 'model',
+    seriesTitle: 'Train & Register',
+    name: 'Evaluate: compare runs, promote the better',
+    difficulty: 3,
+    par: 2,
+    hint: 'ml train run -n exp-2 -p lr=0.05 -p depth=60; ml model register exp-2 --name churn-model',
+    objective:
+      'With `exp-1` already trained on `train@1`, run a second experiment `exp-2`, compare the two runs, and register the better one as `churn-model`.',
+    learning: [
+      'Evaluation is choosing a model over a distribution of runs, not from one lucky number',
+      'The `eval` stage is where you compare metrics (acc/loss/f1) across runs before promoting',
+      'Registering the challenger is the promotion decision — the comparison is what justifies it',
+    ],
+    fieldNotes: [
+      'Compare runs on a held-out metric, never the train metric',
+      'The best run you see overstates true performance (the winner’s curse) — repeat to see the variance',
+    ],
+    startDialog: [
+      {
+        title: 'A run is a sample, not the answer',
+        markdown:
+          '`exp-1` is trained on `train@1`. Real evaluation means running variants and comparing.\n\n```\nml train run -n exp-2 -p lr=0.05 -p depth=60\nml model register exp-2 --name churn-model\n```\n\nTwo runs on the same data are two samples of the same model. Registering the better one is the decision.',
+      },
+      {
+        title: 'Compare before you promote',
+        markdown:
+          'The `eval` stage exists so promotion is a *comparison*, not a coin flip.\n\n`exp-1` and `exp-2` are two points; you look at their metrics, pick the one with the better held-out result, and register it. That is the whole eval step in production terms.',
+      },
+    ],
+    startState: trainedState(),
+    goal: {
+      kind: 'allOf',
+      checks: [{ kind: 'runUsesData', name: 'train', version: 1 }, { kind: 'modelRegistered', name: 'churn-model' }],
+    },
+    solution: [
+      'ml train run -n exp-2 -p lr=0.05 -p depth=60',
+      'ml model register exp-2 --name churn-model',
+    ],
+  },
 ];
 
 const serveLevels: LevelDef[] = [
@@ -270,6 +311,98 @@ const serveLevels: LevelDef[] = [
       ],
     },
     solution: ['ml deploy churn-model:2', 'ml rollback'],
+  },
+  {
+    id: 'canary-1',
+    series: 'serve',
+    seriesTitle: 'Serve & Guard',
+    name: 'Champion / challenger promotion',
+    difficulty: 4,
+    par: 3,
+    hint: 'ml train run …; ml model register …; ml deploy churn-model:2',
+    objective:
+      'Run a challenger experiment, register it as `churn-model:v2`, and deploy it so `prod` is live on `v2` while `v1` is captured as the rollback target — the champion/challenger promotion.',
+    learning: [
+      'Champion/challenger is a live test: the challenger is a specific version, not a random control',
+      'Promotion is a decision — deploy the challenger only once you are willing to hold the cost of a regression',
+      'Deploying the challenger demotes the champion to the rollback target: the safety net is recorded at the swap',
+    ],
+    fieldNotes: [
+      'A challenger that “wins” on one test set can be the winner’s curse — compare on held-out data',
+      'Keep the champion as the rollback target so a regression is a one-command revert',
+    ],
+    startDialog: [
+      {
+        title: 'Promote the challenger, keep the net',
+        markdown:
+          '`churn-model:v1` is the champion, live on `prod`. You have a challenger. Build it and promote it:\n\n```\nml train run -n exp-2 -p lr=0.05 -p depth=60\nml model register exp-2 --name churn-model   # → churn-model:v2 (challenger)\nml deploy churn-model:2                      # v2 live, v1 → rollback target\n```\n\nThe champion is not deleted — it becomes the rollback target the moment the challenger takes over.',
+      },
+      {
+        title: 'Why the target is recorded at the swap',
+        markdown:
+          'The promotion is risky precisely because the challenger has not seen real traffic. Because `ml deploy churn-model:2` records `v1` as the rollback target *before* the swap, a bad challenger is a one-command revert, not a retrain.',
+      },
+    ],
+    startState: deployedState(),
+    goal: {
+      kind: 'allOf',
+      checks: [
+        { kind: 'endpointServes', name: 'prod', ref: { name: 'churn-model', version: 2 } },
+        { kind: 'rollbackAvailable', name: 'prod' },
+      ],
+    },
+    solution: [
+      'ml train run -n exp-2 -p lr=0.05 -p depth=60',
+      'ml model register exp-2 --name churn-model',
+      'ml deploy churn-model:2',
+    ],
+  },
+  {
+    id: 'retrain-1',
+    series: 'serve',
+    seriesTitle: 'Serve & Guard',
+    name: 'Respond to drift: retrain and redeploy',
+    difficulty: 5,
+    par: 4,
+    hint: 'ml data add …; ml train run …; ml model register …; ml deploy churn-model:2',
+    objective:
+      'Close the loop: bring in fresh data (`v2`), retrain a model on it, register `churn-model:v2`, and deploy it so `prod` serves the refreshed model — the drift → retrain → redeploy response.',
+    learning: [
+      'Drift is a distribution shift: the model was fit on `train@1`, but live data has moved to `v2`',
+      'Retraining is a *closed-loop actuator* — the monitor’s drift signal is what triggers it',
+      'The response is to retrain on the *new* data version and redeploy, recording the old model as the rollback target',
+    ],
+    fieldNotes: [
+      'Retrain on the drifted data — a model fit on `train@1` cannot chase a distribution it has never seen',
+      'The redeploy records the previous model as the rollback target, so a worse retrain is reversible',
+    ],
+    startDialog: [
+      {
+        title: 'The loop closes here',
+        markdown:
+          '`churn-model:v1` is live on `prod`, but the data has drifted. The response is to retrain on fresh data and redeploy:\n\n```\nml data add data/train.csv          # → train@v2 (the drifted data)\nml train run -n exp-2 -p lr=0.05 -p depth=60   # retrain on train@v2\nml model register exp-2 --name churn-model      # → churn-model:v2\nml deploy churn-model:2                # v2 live, v1 → rollback target\n```\n\nThis is the monitor → ingest/train edge: the whole loop, closed.',
+      },
+      {
+        title: 'Why retrain, not just redeploy',
+        markdown:
+          'You cannot fix drift by redeploying the same model — it was fit on `train@1` and has never seen `v2`. Retraining on the new version is what lets the model chase the distribution. The redeploy then records `v1` as the rollback target, so a worse retrain is a one-command revert.',
+      },
+    ],
+    startState: deployedState(),
+    goal: {
+      kind: 'allOf',
+      checks: [
+        { kind: 'datasetVersioned', name: 'train', minVersion: 2 },
+        { kind: 'modelRegistered', name: 'churn-model', minVersion: 2 },
+        { kind: 'endpointServes', name: 'prod', ref: { name: 'churn-model', version: 2 } },
+      ],
+    },
+    solution: [
+      'ml data add data/train.csv',
+      'ml train run -n exp-2 -p lr=0.05 -p depth=60',
+      'ml model register exp-2 --name churn-model',
+      'ml deploy churn-model:2',
+    ],
   },
 ];
 

@@ -84,6 +84,33 @@ export const deLevels: Record<string, LevelCopy> = {
       },
     ],
   },
+  'eval-1': {
+    seriesTitle: 'Train & Register',
+    name: 'Evaluieren: Runs vergleichen, den besseren befördern',
+    objective:
+      'Mit `exp-1`, das bereits auf `train@1` trainiert wurde, ein zweites Experiment `exp-2` fahren, die beiden Runs vergleichen und den besseren als `churn-model` registrieren.',
+    learning: [
+      'Evaluation heißt, ein Modell über eine Verteilung von Runs auszuwählen, nicht von einer glücklichen Zahl',
+      'Die `eval`-Stufe ist, wo du Metriken (acc/loss/f1) über Runs vergleichst, bevor du beförderst',
+      'Das Registrieren des Challengers ist die Beförderungsentscheidung — der Vergleich ist, was sie rechtfertigt',
+    ],
+    fieldNotes: [
+      'Vergleiche Runs auf einer Halte-Metrik, nie auf der Trainings-Metrik',
+      'Der beste Run, den du siehst, überschätzt die wahre Leistung (der winner’s curse) — wiederhole, um die Varianz zu sehen',
+    ],
+    startDialog: [
+      {
+        title: 'Ein Run ist eine Stichprobe, nicht die Antwort',
+        markdown:
+          '`exp-1` ist auf `train@1` trainiert. Echte Evaluation heißt, Varianten zu fahren und zu vergleichen.\n\n```\nml train run -n exp-2 -p lr=0.05 -p depth=60\nml model register exp-2 --name churn-model\n```\n\nZwei Runs auf denselben Daten sind zwei Stichproben desselben Modells. Den besseren zu registrieren ist die Entscheidung.',
+      },
+      {
+        title: 'Vergleichen, bevor du beförderst',
+        markdown:
+          'Die `eval`-Stufe existiert, damit die Beförderung ein *Vergleich* ist, kein Münzwurf.\n\n`exp-1` und `exp-2` sind zwei Punkte; du schaust auf ihre Metriken, wählst den mit dem besseren Halte-Ergebnis und registrierst ihn. Das ist der gesamte eval-Schritt in Produktionsbegriffen.',
+      },
+    ],
+  },
   'register-1': {
     seriesTitle: 'Train & Register',
     name: 'Ein Modell aus einem Run registrieren',
@@ -189,6 +216,60 @@ export const deLevels: Record<string, LevelCopy> = {
         title: 'Warum das eine Fähigkeit ist',
         markdown:
           'Jeder kann deployen. Der professionelle Zug ist *sauber upgraden und zurückdrehen*.\n\nWeil das rollback target beim Deploy erfasst wurde, ratst du nie über die alte Version — du stellst genau die wieder her, die serviert wurde. Das ist das Sicherheitsnetz, um das der ganze MLOps-Kreis gebaut ist.',
+      },
+    ],
+  },
+  'canary-1': {
+    seriesTitle: 'Serve & Guard',
+    name: 'Champion / Challenger-Beförderung',
+    objective:
+      'Ein Challenger-Experiment fahren, es als `churn-model:v2` registrieren und es deployen, sodass `prod` live auf `v2` ist, während `v1` als rollback target erfasst wird — die champion/challenger-Beförderung.',
+    learning: [
+      'Champion/challenger ist ein Live-Test: der Challenger ist eine konkrete Version, kein zufälliger Kontrollarm',
+      'Die Beförderung ist eine Entscheidung — du beförderst den Challenger nur, wenn du die Kosten einer Regression halten willst',
+      'Beim Deploy des Challengers wird der Champion zum rollback target: das Sicherheitsnetz wird beim Switch erfasst',
+    ],
+    fieldNotes: [
+      'Ein Challenger, der „siegt”, ist der winner’s curse — vergleiche auf Halte-Daten',
+      'Behalte den Champion als rollback target, damit eine Regression ein Ein-Befehl-Revert ist',
+    ],
+    startDialog: [
+      {
+        title: 'Challenger befördern, das Netz behalten',
+        markdown:
+          '`churn-model:v1` ist der Champion, live auf `prod`. Du hast einen Challenger. Baue ihn und befördere ihn:\n\n```\nml train run -n exp-2 -p lr=0.05 -p depth=60\nml model register exp-2 --name churn-model   # → churn-model:v2 (Challenger)\nml deploy churn-model:2                      # v2 live, v1 → rollback target\n```\n\nDer Champion wird nicht gelöscht — er wird zum rollback target, in dem Moment, in dem der Challenger übernimmt.',
+      },
+      {
+        title: 'Warum das Ziel beim Switch erfasst wird',
+        markdown:
+          'Die Beförderung ist riskant, gerade weil der Challenger echten Traffic noch nie gesehen hat. Weil `ml deploy churn-model:2` `v1` als rollback target *vor* dem Switch erfasst, ist ein schlechter Challenger ein Ein-Befehl-Revert, kein Retrain.',
+      },
+    ],
+  },
+  'retrain-1': {
+    seriesTitle: 'Serve & Guard',
+    name: 'Auf Drift reagieren: neu trainieren und neu deployen',
+    objective:
+      'Den Kreis schließen: frische Daten (`v2`) hereinbringen, darauf neu trainieren, `churn-model:v2` registrieren und deployen, sodass `prod` das aktualisierte Modell serviert — die Drift → retrain → redeploy-Antwort.',
+    learning: [
+      'Drift ist eine Distributionsverschiebung: das Modell wurde auf `train@1` gefittet, aber die Live-Daten sind auf `v2` gezogen',
+      'Retraining ist ein *geschlossener* Aktuator — das Drift-Signal des Monitors ist es, was es auslöst',
+      'Die Antwort ist, auf der *neuen* Datenversion neu zu trainieren und neu zu deployen, und das alte Modell als rollback target zu erfassen',
+    ],
+    fieldNotes: [
+      'Auf den drifteten Daten neu trainieren — ein Modell, das auf `train@1` gefittet ist, kann eine Verteilung nicht jagen, die es nie gesehen hat',
+      'Das Neu-Deploy erfasst das vorherige Modell als rollback target, damit ein schlechteres Retrain rückholbar bleibt',
+    ],
+    startDialog: [
+      {
+        title: 'Hier schließt sich der Kreis',
+        markdown:
+          '`churn-model:v1` ist live auf `prod`, aber die Daten sind gedriftet. Die Antwort ist, auf frischen Daten neu zu trainieren und neu zu deployen:\n\n```\nml data add data/train.csv          # → train@v2 (die drifteten Daten)\nml train run -n exp-2 -p lr=0.05 -p depth=60   # auf train@v2 neu trainieren\nml model register exp-2 --name churn-model      # → churn-model:v2\nml deploy churn-model:2                # v2 live, v1 → rollback target\n```\n\nDas ist die monitor → ingest/train-Kante: der ganze Kreis, geschlossen.',
+      },
+      {
+        title: 'Warum neu trainieren, nicht nur neu deployen',
+        markdown:
+          'Du kannst Drift nicht beheben, indem du dasselbe Modell neu deployst — es wurde auf `train@1` gefittet und hat `v2` nie gesehen. Auf der neuen Version neu zu trainieren ist es, was dem Modell erlaubt, der Verteilung zu folgen. Das Neu-Deploy erfasst dann `v1` als rollback target, damit ein schlechteres Retrain ein Ein-Befehl-Revert ist.',
       },
     ],
   },
