@@ -14,7 +14,7 @@ import type { Locale } from '../i18n/types';
 import { launchConfetti, playFanfare } from './confetti';
 import { loadProgress, resumeLine, saveProgress, summarizeCurriculum } from './progress';
 import { formatUiHelpText, startUiTour, uiHelpModalHtml } from './ui-help';
-import { getVisitorCount } from './visitor-counter';
+import { getCachedVisitorCount, loadVisitorCount } from './visitor-counter';
 
 function escapeHtml(s: string): string {
   return s
@@ -228,7 +228,9 @@ export class App {
   }
 
   private async initVisitorCounter(): Promise<void> {
-    const count = await getVisitorCount();
+    this.cachedVisitorCount = getCachedVisitorCount();
+    this.renderVisitorBadge();
+    const count = await loadVisitorCount();
     if (count !== null) {
       this.cachedVisitorCount = count;
       this.renderVisitorBadge();

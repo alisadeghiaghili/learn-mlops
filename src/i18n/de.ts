@@ -282,7 +282,6 @@ export const de: Catalog = {
     partyMode: '*** PARTY MODE *** Konfetti incoming — Teilen-Buttons unten.',
     github: 'GitHub',
     githubTitle: 'GitHub — Source & Issues',
-    visitors: (count) => `${count} Lernende`,
     visitorsTitle: 'Einzelne Lernende, die hier MLOps üben',
     support: 'Kauf mir einen Kaffee',
     supportTitle: 'Unterstütze den Herausgeber',

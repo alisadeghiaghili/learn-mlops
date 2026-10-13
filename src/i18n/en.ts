@@ -282,7 +282,6 @@ export const en: Catalog = {
     partyMode: '*** PARTY MODE *** confetti incoming — share buttons below.',
     github: 'GitHub',
     githubTitle: 'GitHub — source & issues',
-    visitors: (count) => `${count} learners`,
     visitorsTitle: 'Unique learners practicing MLOps here',
     support: 'Buy me a coffee',
     supportTitle: 'Support the publisher',

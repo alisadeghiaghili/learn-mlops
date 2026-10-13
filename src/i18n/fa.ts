@@ -283,7 +283,6 @@ export const fa: Catalog = {
     partyMode: '*** حال و‌حول جشن *** کاغذ رنگی می‌آید — دکمه‌های اشتراک پایین‌تر.',
     github: 'GitHub',
     githubTitle: 'GitHub — سورس و ایشو',
-    visitors: (count) => `${count} یادگیرنده`,
     visitorsTitle: 'یادگیرندگان یکتایی که اینجا MLOps را تمرین کرده‌اند',
     support: 'Buy me a coffee',
     supportTitle: 'از ناشر حمایت کنید',

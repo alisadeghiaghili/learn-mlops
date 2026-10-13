@@ -88,7 +88,6 @@ export interface UiCopy {
   partyMode: string;
   github: string;
   githubTitle: string;
-  visitors: (count: string) => string;
   visitorsTitle: string;
   support: string;
   supportTitle: string;
