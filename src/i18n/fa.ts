@@ -346,7 +346,7 @@ export const fa: Catalog = {
     welcomeBoard:
       'بورد **Dataset → Model Registry → Service** را نشان می‌دهد. این همان جریان موادی است که MLOps مدیریت می‌کند.',
     welcomeTracks:
-      '- مبانی: `init`, `data add` (نسخه‌شده‌سازی دیتاست)\n- آموزش و ثبت: `train run`, `model register`\n- سرویس و حفاظت: `deploy`, `monitor on`, `rollback`\n- Ship کردن: کپستون کاملِ پایش‌شده و آماده‌ی rollback',
+      '- مبانی: `init`, `data add` (نسخه‌شده‌سازی دیتاست)\n- آموزش و ثبت: `train run`, `model register`\n- سرویس و حفاظت: `deploy`, `monitor on`, `rollback`\n- Ship کردن: کپستون کاملِ پایش‌شده و آماده‌ی rollback\n- جعبه‌ابزار: نگاشت هر مفهوم به یک ابزار واقعی (MLflow، Kubeflow، KServe، Vertex AI، Airflow، DVC، SageMaker، TFX، MLrun)',
     welcomeMeta: 'متا: `levels`, `curriculum`, `concepts`, `lesson`, `hint`, `steps`, `show solution`.',
     welcomeLevelsCount: (n) =>
       `**${n}** مرحله گنجانده شده. برای شروع مرحله‌ها را باز کنید، یا در سندباکس بمانید.`,

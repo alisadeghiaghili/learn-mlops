@@ -349,7 +349,7 @@ export const de: Catalog = {
     welcomeBoard:
       'Das Board zeigt **Dataset → Model-Registry → Service**. Das ist der Materialfluss, den MLOps verwaltet.',
     welcomeTracks:
-      '- Basics: `init`, `data add` (Dataset versionieren)\n- Train & Register: `train run`, `model register`\n- Serve & Guard: `deploy`, `monitor on`, `rollback`\n- Ship it: der vollständige, überwachte, rollback-fähige Capstone',
+      '- Basics: `init`, `data add` (Dataset versionieren)\n- Train & Register: `train run`, `model register`\n- Serve & Guard: `deploy`, `monitor on`, `rollback`\n- Ship it: der vollständige, überwachte, rollback-fähige Capstone\n- Toolbox: jedes Konzept auf ein reales Tool gemappt (MLflow, Kubeflow, KServe, Vertex AI, Airflow, DVC, SageMaker, TFX, MLrun)',
     welcomeMeta: 'Meta: `levels`, `curriculum`, `concepts`, `lesson`, `hint`, `steps`, `show solution`.',
     welcomeLevelsCount: (n) => `**${n}** Level enthalten. Öffne Level zum Starten, oder bleib in der Sandbox.`,
     welcomeWhat: '**Was ist LearnMLOps?**',

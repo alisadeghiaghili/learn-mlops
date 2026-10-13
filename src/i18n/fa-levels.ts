@@ -224,4 +224,247 @@ export const faLevels: Record<string, LevelCopy> = {
       },
     ],
   },
+  'tool-mlflow': {
+    seriesTitle: 'جعبه‌ابزار',
+    name: 'ثبت یک run در MLflow',
+    objective:
+      'یک آزمایش train را اجرا کنید و پارامترها، متریک‌ها و lineageی داده‌اش را ثبت کنید — دقیقاً همان کاری که APIِ `mlflow.log_*` از MLflow برای runهای واقعی انجام می‌دهد.',
+    learning: [
+      'MLflow Tracking منبعِ راستیِ runهاست: پارامتر، متریک و artifact، همه قابل‌استعلام و قابل‌مقایسه',
+      '`mlflow.start_run()` + `mlflow.log_param` / `log_metric` / `log_artifact` همان شکلی است که `ml train run` اینجا شبیه‌سازی می‌کند',
+      'runی که اینجا نگه می‌دارید همانی است که آنجا log می‌کردید — ایده‌ی یکسان، ابزار واقعی',
+    ],
+    fieldNotes: [
+      'MLflow را به یک store مشترک (S3، یک دیتابیس) وصل کنید تا کل تیم runها را با هم مقایسه کند، نه screenshotها را',
+      'lineageی `train@1` همان تکه‌ای است که MLflow می‌سازد تا یک متریک هرگز غیرقابل‌ردیابی نشود',
+    ],
+    startDialog: [
+      {
+        title: 'ابزار پشت «train run»',
+        markdown:
+          'در یک تیم واقعی، runی که همین حالا شبیه‌سازی کردید در **MLflow** زندگی می‌کند.\n\n[مستندات MLflow → https://mlflow.org/docs/latest/](https://mlflow.org/docs/latest/)\n\n```\nimport mlflow\nmlflow.start_run(name="exp-1")\nmlflow.log_param("lr", 0.1)\nmlflow.log_metric("acc", 0.907)\n```\n\nایده‌ی یکسان با `ml train run` — پارامتر، متریک و lineage به یک runِ قابل‌استعلام پیوسته.',
+      },
+      {
+        title: 'فرمان را اجرا کنید',
+        markdown:
+          'آزمایشِ train را دوباره اجرا کنید. مکانیک دقیقاً مثل `train-1` است؛ نکته این است که ببینید این همان واحدی است که MLflow در تولید track می‌کند.\n\n```\nml train run -n exp-1 -p lr=0.1 -p depth=40\n```\n\nدر MLflow این یک سطر در جدول runهاست که می‌توانید فیلتر، sort و مقایسه کنید.',
+      },
+    ],
+  },
+  'tool-kfp': {
+    seriesTitle: 'جعبه‌ابزار',
+    name: 'مدل‌سازی pipeline در Kubeflow Pipelines',
+    objective:
+      'مرحله‌های train → register را به یک pipeline تبدیل کنید — همان گرافی که Kubeflow Pipelines به‌صورت کامپوننت‌های نسخه‌شده و قابل‌اجرای مجدد اجرا می‌کند.',
+    learning: [
+      'Kubeflow Pipelines یک تابع Python از کامپوننت‌های اتصال‌یافته را به یک DAGِ نسخه‌شده کامپایل می‌کند که روی کلاستر اجرا می‌شود',
+      'هر `@component` یک مرحله است — مرحله‌های train و register شما دو گره روی یک ریلِ یکسان‌اند',
+      'pipelineای که بتوانید دوباره اجرا کنید، pipelineی است که بتوانید audit کنید؛ گراف، نه یک سلولِ notebook، منبعِ راستی است',
+    ],
+    fieldNotes: [
+      'کل چرخه‌ی حیات را به‌صورت یک pipeline مدل کنید تا یک اجرای واحدِ `kfp` داده → مدل → رجیستری را جابه‌جا کند',
+      'ورودی/خروجی کامپوننت‌ها artifact هستند — lineageی `train@1` در دنیای واقعی آنجا زندگی می‌کند',
+    ],
+    startDialog: [
+      {
+        title: 'ابزار پشت ریل',
+        markdown:
+          'ریلِ شش‌مرحله‌ای شما یک DAG است. **Kubeflow Pipelines** همان چیزی است که این DAG را در عمل اجرا می‌کند.\n\n[مستندات Kubeflow Pipelines → https://www.kubeflow.org/docs/components/pipelines/](https://www.kubeflow.org/docs/components/pipelines/)\n\n```python\n@kfp.dsl.pipeline def pipeline():\n    train()   # یک کامپوننت\n    register(depends_on=train())  # مرحله‌ی بعد\n```\n\nریل روی بورد و این، گرافی یکسان‌اند.',
+      },
+      {
+        title: 'روشن کردن دو مرحله',
+        markdown:
+          'نیمه‌ی train → register از pipeline را اجرا کنید. هدف فقط داشتن یک run روی نسخه‌ی داده و یک مدلِ registerشده است — دو مرحله پشت‌سرهم.\n\n```\nml train run -n exp-1 -p lr=0.1 -p depth=40\nml model register exp-1 --name churn-model\n```\n\nدر Kubeflow این دو کامپوننت با یک یال بین آن‌ها بود.',
+      },
+    ],
+  },
+  'tool-kserve': {
+    seriesTitle: 'جعبه‌ابزار',
+    name: 'سرویس یک اندپوینتِ مدل با KServe',
+    objective:
+      'مدلِ registerشده را به اندپوینتِ زنده‌ی `prod` deploy کنید — همان کاری که KServe انجام می‌دهد وقتی یک مدل را به یک سرویسِ autoscaling از Kserve deploy می‌کند.',
+    learning: [
+      'KServe یک مدل را به‌صورت یک سرویسِ Kubernetes deploy می‌کند که به‌طور خودکار scale می‌شود (تا صفر در حالت بیکاری) و یک API استانداردِ inference صحبت می‌کند',
+      '`ml deploy` و یک deployِ `v1` در KServe تصمیمِ یکسانی‌اند: نشان دادن یک اندپوینتِ زنده به یک نسخه‌ی بنامِ مدل',
+      'سرویس همان‌جایی است که مدل به محصول تبدیل می‌شود — اندپوینت، نه artifact، چیزی است که کاربران صدا می‌زنند',
+    ],
+    fieldNotes: [
+      'بگذارید لایه‌ی سرویس autoscale کند و تا صفر برود — فقط برای ترافیکِ inference واقعی بپردازید',
+      'اندپوینت را به یک نسخه‌ی رجیستری pin کنید تا «کدام مدل live است؟» یک جوابِ واحد داشته باشد',
+    ],
+    startDialog: [
+      {
+        title: 'ابزار پشت «deploy»',
+        markdown:
+          '`ml deploy exp-1` اندپوینتِ `prod` را زنده می‌کند. در یک کارگاهِ Kubernetes، **KServe** همان سیستمی است که این کار را انجام می‌دهد.\n\n[مستندات KServe → https://kserve.github.io/kserve/](https://kserve.github.io/kserve/)\n\nیک `InferenceService` از KServe یک نسخه‌ی registerشده‌ی مدل را در یک سرویسِ autoscaling با یک اندپوینتِ predict استاندارد قرار می‌دهد.',
+      },
+      {
+        title: 'آن را زنده کنید',
+        markdown:
+          'مدلِ registerشده را به اندپوینت ببرید.\n\n```\nml deploy exp-1\n```\n\nاندپوینت از `cold` به `live` می‌رود و نسخه‌ی رجیستری به Production ارتقا می‌یابد — دقیقاً همان ارتقایی که یک deploy از KServe را برای ترافیک قابل‌مشاهده می‌کند.',
+      },
+    ],
+  },
+  'tool-vertex-ai': {
+    seriesTitle: 'جعبه‌ابزار',
+    name: 'deploy یک اندپوینتِ مدیریت‌شده روی Vertex AI',
+    objective:
+      'مدلِ registerشده را به یک اندپوینتِ زنده ارتقا دهید — معادلِ مدیریت‌شده از `ml deploy`، همان‌طور که Vertex AI با یک Endpoint مدیریت‌شده انجام می‌دهد.',
+    learning: [
+      'Vertex AI Model Registry + Endpoints مدیریت‌شده انتقالِ رجیستری → سرویس را از دستان شما می‌گیرند',
+      'یک Endpoint مدیریت‌شده scale، health و API پیش‌بینی را بر عهده می‌گیرد؛ کار شما انتخابِ نسخه‌ای است که ارتقا می‌دهید',
+      'نسخه‌ی `churn-model:vN → endpoint` اینجا همان ارتقایی است که یک deploy از Vertex انجام می‌دهد',
+    ],
+    fieldNotes: [
+      'از رجیستریِ مدیریت‌شده استفاده کنید تا شماره‌ی نسخه، قرارداد بین تیم‌ها باشد، نه یک مسیر فایل',
+      'موردنظر ارتقا دهید: یک Endpoint مدیریت‌شده deploy را به یک اقدامِ قابل‌بررسی تبدیل می‌کند، نه یک اسکریپت',
+    ],
+    startDialog: [
+      {
+        title: 'مسیرِ مدیریت‌شده به «deploy»',
+        markdown:
+          'روی GCP، **Vertex AI** یک model registry را با Endpoints مدیریت‌شده جفت می‌کند.\n\n[Vertex AI Model Registry → https://cloud.google.com/vertex-ai/docs/model-registry](https://cloud.google.com/vertex-ai/docs/model-registry)\n\nشما یک نسخه register می‌کنید و آن را به یک Endpoint مدیریت‌شده deploy می‌کنید — همان حرکتِ رجیستری → سرویس مثل `ml deploy`.',
+      },
+      {
+        title: 'ارتقا به زنده',
+        markdown:
+          'مدلِ registerشده را به اندپوینت ببرید.\n\n```\nml deploy exp-1\n```\n\n`prod` روی نسخه‌ی ارتقا‌یافته زنده می‌شود. در Vertex این همان Endpoint مدیریت‌شده است که حالا `churn-model:v1` را سرویس می‌کند.',
+      },
+    ],
+  },
+  'tool-airflow': {
+    seriesTitle: 'جعبه‌ابزار',
+    name: 'برنامه‌ریزی مرحله‌ی ingest در Airflow',
+    objective:
+      'یک snapshotِ داده‌ی نسخه‌شده را طبق زمان‌بندی تولید کنید — همان کاری که یک DAG از Airflow هر سیکل برای تغذیه‌ی بقیه‌ی چرخه‌ی حیات اجرا می‌کند.',
+    learning: [
+      'Airflow وظایفِ داده را طبق زمان‌بندی اجرا می‌کند و یک تاریخچه‌ی وظیفه‌به‌وظیفه نگه می‌دارد — مرحله‌ی «ingest» به‌عنوان یک job پایدار، نه یک اسکریپتِ یک‌باره',
+      'هر اجرای DAG یک نسخه‌ی داده‌ی تازه می‌گذارد؛ این همان قدمِ `ml data add` است که تکرارپذیر و قابل‌مشاهده شده',
+      'یک scheduler «داده‌ی تازه» را به یک تضمین تبدیل می‌کند که می‌توانید به آن اعتماد کنید، تا trainingِ downstream همیشه یک نسخه‌ی واقعی را pin کند',
+    ],
+    fieldNotes: [
+      'داده را در خودِ مرحله‌ی DAG نسخه کنید تا هر trainingِ downstream به‌صورت قابل‌تکرار روی یک snapshotِ بنام اجرا شود',
+      'retry + alert از Airflow همان چیزی است که مانع می‌شود یک ingestِ خراب، داده‌ی کهنه را خاموشانه به training تغذیه کند',
+    ],
+    startDialog: [
+      {
+        title: 'ابزار پشت «data add»',
+        markdown:
+          'داده‌ی تازه و نسخه‌شده، طبق زمان‌بندی — همان چیزی که **Airflow** برای آن ساخته شده.\n\n[مستندات Airflow → https://airflow.apache.org/docs/](https://airflow.apache.org/docs/)\n\nیک وظیفه‌ی DAG داده‌ی تازه می‌کشد و یک نسخه می‌نویسد — مرحله‌ی `ingest` از ریل شما، که سرِ وقت و همیشه اجرا می‌شود.',
+      },
+      {
+        title: 'تولیدِ نسخه',
+        markdown:
+          'ingest را اجرا کنید: دیتاست را نسخه کنید تا training چیزی برای pin کردن داشته باشد.\n\n```\nml data add data/train.csv\n```\n\nدر یک DAG واقعی همین قدم روی یک cron اجرا می‌شود و هر سیکل یک `train@N` تازه می‌گذارد.',
+      },
+    ],
+  },
+  'tool-dvc': {
+    seriesTitle: 'جعبه‌ابزار',
+    name: 'نسخه‌سازی داده با DVC',
+    objective:
+      'دیتاست را به‌عنوان یک شیءِ نسخه‌شده و content-addressed track کنید — دقیقاً همان کاری که DVC با `dvc add` و فایلِ pointerِ `.dvc` انجام می‌دهد.',
+    learning: [
+      'DVC بایت‌های واقعی را در storageی remote نگه می‌دارد و فقط یک pointerِ hash در Git نگه می‌دارد — `ml data add` دقیقاً همان تقسیم را شبیه‌سازی می‌کند',
+      'شناسه‌ی content که می‌بینید (`train@1`) ایده‌ی یکسانی با hashِ content از DVC است: هویتی پایدار و قابل‌audit برای داده',
+      'نسخه‌سازی داده مثل کد یعنی «کدام داده این مدل را train کرد؟» همیشه یک hash دارد که به آن اشاره کنید',
+    ],
+    fieldNotes: [
+      'دیتاست‌های بزرگ را از Git بیرون و در storageی remote از DVC نگه دارید؛ فقط pointerهای hashِ کوچک را commit کنید',
+      'training را به یک نسخه‌ی DVC pin کنید تا آزمایش‌ها روی هر ماشینی قابل‌تکرار باشند',
+    ],
+    startDialog: [
+      {
+        title: 'ابزار پشت نسخه‌های داده',
+        markdown:
+          'دیتاست‌های بزرگ که مثل کد نسخه می‌شوند؟ آن **DVC** است.\n\n[مستندات DVC → https://dvc.org/doc](https://dvc.org/doc)\n\n```\ndvc add data/train.csv   # فایل را ذخیره می‌کند، یک pointerِ hashِ .dvc در Git نگه می‌دارد\n```\n\n`ml data add` همان حرکت است: یک شیءِ بنام با نسخه‌های content.',
+      },
+      {
+        title: 'نسخه‌سازی دیتاست',
+        markdown:
+          'داده را تحت کنترلِ نسخه بگذارید.\n\n```\nml data add data/train.csv\n```\n\nناحیه‌ی Dataset حالا `train [v1]` را با یک شناسه‌ی content نشان می‌دهد — همان pointer از DVC، قابل‌مشاهده.',
+      },
+    ],
+  },
+  'tool-sagemaker': {
+    seriesTitle: 'جعبه‌ابزار',
+    name: 'ساخت یک اندپوینتِ SageMaker',
+    objective:
+      'مدلِ registerشده را به یک اندپوینتِ زنده deploy کنید — نسخه‌ی AWS مدیریت‌شده از `ml deploy`، همان‌طور که `sagemaker create-endpoint` انجام می‌دهد.',
+    learning: [
+      'Amazon SageMaker یک مدلِ registerشده را از طریق Model Registry به یک اندپوینتِ زنده و autoscaling تبدیل می‌کند',
+      '`ml deploy` و `sagemaker create-endpoint` همان ارتقا هستند: یک نسخه‌ی رجیستری به یک سرویسِ زنده و callable تبدیل می‌شود',
+      'اندپوینتِ مدیریت‌شده ownerِ اینستنس‌ها و scale است؛ شما ownerِ تصمیمِ نسخه‌ای هستید که ارتقا می‌دهید',
+    ],
+    fieldNotes: [
+      'اول register، بعد deploy — Model Registry از SageMaker همان نظمِ Staging → Production است که از قبل استفاده می‌کنید',
+      'نامِ اندپوینت همان قرارداد است که فراخوان‌های شما به آن ضربه می‌زنند؛ نسخه‌ی مدل پشت آن اهرمِ شماست',
+    ],
+    startDialog: [
+      {
+        title: 'ابزار پشت «deploy» در AWS',
+        markdown:
+          'روی AWS، **SageMaker** مسیرِ مدیریت‌شده از رجیستری به یک اندپوینتِ زنده است.\n\n[Amazon SageMaker Model Registry → https://docs.aws.amazon.com/sagemaker/latest/dg/model-registry.html](https://docs.aws.amazon.com/sagemaker/latest/dg/model-registry.html)\n\n```\naws sagemaker create-endpoint --endpoint-name prod --model-name churn\n```\n\nایده‌ی یکسان با `ml deploy`: نشان دادن یک اندپوینتِ زنده به یک نسخه‌ی رجیستری.',
+      },
+      {
+        title: 'زنده کردن',
+        markdown:
+          'مدلِ registerشده را deploy کنید.\n\n```\nml deploy exp-1\n```\n\n`prod` روی `churn-model:v1` زنده می‌شود — همان اندپوینتِ SageMaker که حالا این نسخه را سرویس می‌کند.',
+      },
+    ],
+  },
+  'tool-tfx': {
+    seriesTitle: 'جعبه‌ابزار',
+    name: 'افزودن validitation به pipeline با TFX',
+    objective:
+      'ترتیبِ train → register → deploy را اجرا کنید، همان‌طور که یک pipeline از TFX هر مرحله را پیش از اجازه‌ی ship شدنِ یک مدل به validitation می‌سنجد.',
+    learning: [
+      'TFX یک pipeline کاملِ MLOps را با هم می‌سازد — validitationِ داده، train، validitationِ مدل و publishing — به‌صورت کامپوننت‌های اتصال‌یافته',
+      'مرحله‌ی `push` یک مدلِ validated را به رجیستری منتشر می‌کند؛ این همان قدمِ register با درهای اطرافش است',
+      'validitation همان چیزی است که «train شد» را به «حقِ ship دارد» می‌کند — یک در روی هر مرحله، نه یک انتظار',
+    ],
+    fieldNotes: [
+      'بگذارید schema validitation از TFX یک نسخه‌ی داده‌ی بد را قبل از آنکه به train برسد مسدود کند',
+      'model validitation + مرحله‌ی `push` ارتقا را به یک تصمیمِ سیاستی تبدیل می‌کند که pipeline آن را اجبار می‌کند',
+    ],
+    startDialog: [
+      {
+        title: 'ابزار پشت «pipelineی با کنترل‌ها»',
+        markdown:
+          '**TFX** یک frameworkِ کامپوننت است که pipeline کاملِ validated را می‌سازد: validitationِ داده → train → validitationِ مدل → `push`.\n\n[مستندات TFX → https://www.tensorflow.org/tfx/guide](https://www.tensorflow.org/tfx/guide)\n\nکامپوننتِ `push` یک مدلِ validated را به رجیستری منتشر می‌کند — همان `ml model register` شما با درهای دور آن.',
+      },
+      {
+        title: 'اجرای نیمه‌ی pipeline',
+        markdown:
+          'train → register → deploy را اجرا کنید. هدف مسیرِ کامل است: یک مدلِ validated که register و سپس زنده شود.\n\n```\nml train run -n exp-1 -p lr=0.1 -p depth=40\nml model register exp-1 --name churn-model\nml deploy exp-1\n```\n\nهر مرحله در TFX یک کامپوننت است که باید قبل از اجرای بعدی بگذرد.',
+      },
+    ],
+  },
+  'tool-mlrun': {
+    seriesTitle: 'جعبه‌ابزار',
+    name: 'track کردن کل حلقه در MLrun',
+    objective:
+      'حلقه‌ی داده → train → register → deploy را از ابتدا تا انتها بگردانید — همان داستانِ run و track که MLrun برای آن ساخته شده، با log کردنِ هر قدم به یک پروژه‌ی واحد.',
+    learning: [
+      'MLrun آزمایش‌ها، مدل‌ها و pipelineها را در یک پروژه‌ی واحد ثبت می‌کند که می‌توانید بررسی و بازتولید کنید',
+      'گرداندنِ داده → مدل → live در یک تازگی، کلِ حلقه است که MLrun به‌عنوان تاریخچه‌ی قابل‌استعلام نگه می‌دارد',
+      'وقتی هر قدم به همان پروژه log شود، lineageی یک مدل یک dashboard است، نه یک حفاریِ باستان‌شناسی',
+    ],
+    fieldNotes: [
+      'همه‌چیز را از طریق MLrun بچرخانید تا داده، run، مدلِ registerشده و deploy یک lineageی مشترک داشته باشند',
+      'یک نمایِ پروژه‌ی واحد همان چیزی است که «بازتولیدِ این مدل» را به یک کلیک تبدیل می‌کند، نه یک بازسازی',
+    ],
+    startDialog: [
+      {
+        title: 'ابزار پشت «track کردن همه‌چیز»',
+        markdown:
+          '**MLrun** runها، مدل‌ها و pipelineها را در یک پروژه نگه می‌دارد که می‌توانید از ابتدا تا انتها ردیابی کنید.\n\n[مستندات MLrun → https://mlrun.org/docs/](https://mlrun.org/docs/)\n\nگرداندنِ چرخه‌ی حیات شما همان چیزی است که MLrun log می‌کند — هر مرحله به‌عنوان یک artifactِ قابل‌جستجو در پروژه فرود می‌آید.',
+      },
+      {
+        title: 'گرداندنِ حلقه',
+        markdown:
+          'پروژه را از داده‌ی نسخه‌نشده به یک مدلِ زنده در یک ترتیب ببرید.\n\n```\nml data add data/train.csv\nml train run -n exp-1 -p lr=0.1 -p depth=40\nml model register exp-1 --name churn-model\nml deploy exp-1\n```\n\nهر فرمان یک قدم از حلقه است که MLrun را به همان پروژه log می‌کرد.',
+      },
+    ],
+  },
 };

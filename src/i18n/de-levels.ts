@@ -224,4 +224,247 @@ export const deLevels: Record<string, LevelCopy> = {
       },
     ],
   },
+  'tool-mlflow': {
+    seriesTitle: 'Toolbox',
+    name: 'Einen Run in MLflow aufzeichnen',
+    objective:
+      'Ein Trainings-Experiment fahren und seine Parameter, Metriken und Daten-Lineage aufzeichnen — genau das, was die `mlflow.log_*`-API von MLflow für echte Runs tut.',
+    learning: [
+      'MLflow Tracking ist das System der Wahrheit für Runs: Parameter, Metriken und Artefakte, alles abfragbar und vergleichbar',
+      '`mlflow.start_run()` + `mlflow.log_param` / `log_metric` / `log_artifact` ist die Form dessen, was `ml train run` hier simuliert',
+      'Der Run, den du hier behältst, ist einer, den du dort loggen würdest — gleiche Idee, reales Tool',
+    ],
+    fieldNotes: [
+      'MLflow auf einen gemeinsamen Store zeigen (S3, eine Datenbank), damit das ganze Team Runs vergleicht, keine Screenshots',
+      'Die `train@1`-Lineage ist der Teil, den MLflow speichert, damit eine Metrik nie unspurbar wird',
+    ],
+    startDialog: [
+      {
+        title: 'Das Tool hinter „train run"',
+        markdown:
+          'In einem echten Team lebt der gerade simulierte Run in **MLflow**.\n\n[MLflow-Doku → https://mlflow.org/docs/latest/](https://mlflow.org/docs/latest/)\n\n```\nimport mlflow\nmlflow.start_run(name="exp-1")\nmlflow.log_param("lr", 0.1)\nmlflow.log_metric("acc", 0.907)\n```\n\nGleiche Idee wie `ml train run` — Parameter, Metriken und Lineage, an einen abfragbaren Run gehängt.',
+      },
+      {
+        title: 'Den Befehl fahren',
+        markdown:
+          'Fahre das Trainings-Experiment erneut. Die Mechanik ist identisch zu `train-1`; der Punkt ist zu sehen, dass dies genau die Einheit ist, die MLflow in Produktion trackt.\n\n```\nml train run -n exp-1 -p lr=0.1 -p depth=40\n```\n\nIn MLflow ist dies eine Zeile in der Run-Tabelle, die du filtern, sortieren und vergleichen kannst.',
+      },
+    ],
+  },
+  'tool-kfp': {
+    seriesTitle: 'Toolbox',
+    name: 'Eine Pipeline in Kubeflow Pipelines modellieren',
+    objective:
+      'Die Stufen train → register zu einer Pipeline verdrahten — derselbe Graph, den Kubeflow Pipelines als versionierte, erneut ausführbare Komponenten ausführt.',
+    learning: [
+      'Kubeflow Pipelines kompiliert eine Python-Funktion aus verbundenen Komponenten zu einer versionierten DAG, die auf einem Cluster läuft',
+      'Jedes `@component` ist eine Stufe — deine train- und register-Stufe sind zwei Knoten auf derselben Schiene',
+      'Eine Pipeline, die du erneut ausführen kannst, ist eine, die du auditieren kannst; die Graphik, nicht eine Notebook-Zelle, ist die Quelle der Wahrheit',
+    ],
+    fieldNotes: [
+      'Den ganzen Lifecycle als eine Pipeline modellieren, damit ein einzelner `kfp`-Run Daten → Modell → Registry bewegt',
+      'Komponenten-Ein-/Ausgaben sind Artefakte — dort lebt in der realen Welt die `train@1`-Lineage',
+    ],
+    startDialog: [
+      {
+        title: 'Das Tool hinter der Schiene',
+        markdown:
+          'Deine sechsstufige Schiene ist eine DAG. **Kubeflow Pipelines** ist es, was diese DAG für die Praxis fährt.\n\n[Kubeflow Pipelines-Doku → https://www.kubeflow.org/docs/components/pipelines/](https://www.kubeflow.org/docs/components/pipelines/)\n\n```python\n@kfp.dsl.pipeline def pipeline():\n    train()   # eine Komponente\n    register(depends_on=train())  # die nächste Stufe\n```\n\nDie Schiene auf dem Board und dies sind derselbe Graph.',
+      },
+      {
+        title: 'Zwei Stufen anzünden',
+        markdown:
+          'Fahre die train → register-Hälfte der Pipeline. Das Ziel ist einfach: einen Run auf der Datenversion und ein registriertes Modell — zwei Stufen der Reihe nach.\n\n```\nml train run -n exp-1 -p lr=0.1 -p depth=40\nml model register exp-1 --name churn-model\n```\n\nIn Kubeflow wären das zwei Komponenten mit einer Kante zwischen ihnen.',
+      },
+    ],
+  },
+  'tool-kserve': {
+    seriesTitle: 'Toolbox',
+    name: 'Ein Modell-Endpoint mit KServe servieren',
+    objective:
+      'Das registrierte Modell auf den live `prod`-Endpoint deployen — derselbe Akt, den KServe tut, indem es ein Modell zu einem autoskalierenden Kserve-Service deployt.',
+    learning: [
+      'KServe deployt ein Modell als Kubernetes-Service, der automatisch skaliert (bis auf null bei Leerlauf) und eine standardisierte Inference-API spricht',
+      '`ml deploy` und ein KServe-`v1`-Deploy sind dieselbe Entscheidung: einen live Endpoint auf eine benannte Modellversion zeigen',
+      'Serving ist, wo ein Modell zum Produkt wird — der Endpoint, nicht das Artefakt, ist es, was Nutzer aufrufen',
+    ],
+    fieldNotes: [
+      'Die Schicht skalieren lassen und bis auf null fahren — bezahle nur für echten Inference-Verkehr',
+      'Den Endpoint auf eine Registry-Version pinnen, damit „welches Modell ist live?" eine einzige Antwort hat',
+    ],
+    startDialog: [
+      {
+        title: 'Das Tool hinter „deploy"',
+        markdown:
+          '`ml deploy exp-1` schaltet den `prod`-Endpoint auf live. In einer Kubernetes-Umgebung ist **KServe** das System, das dies tut.\n\n[KServe-Doku → https://kserve.github.io/kserve/](https://kserve.github.io/kserve/)\n\nEin KServe-`InferenceService` wrappt eine registrierte Modellversion in einen autoskalierenden Service mit einem standardisierten Predict-Endpoint.',
+      },
+      {
+        title: 'Es live machen',
+        markdown:
+          'Bringe das registrierte Modell zum Endpoint.\n\n```\nml deploy exp-1\n```\n\nDer Endpoint wechselt `cold` → `live`, und die Registry-Version wird zu Production befördert — genau die Beförderung, die ein KServe-Deploy für den Verkehr sichtbar macht.',
+      },
+    ],
+  },
+  'tool-vertex-ai': {
+    seriesTitle: 'Toolbox',
+    name: 'Einen verwalteten Endpoint auf Vertex AI deployen',
+    objective:
+      'Das registrierte Modell auf einen live Endpoint befördern — die verwaltete Entsprechung von `ml deploy`, wie Vertex AI es mit einem verwalteten Endpoint tut.',
+    learning: [
+      'Vertex AI Model Registry + verwaltete Endpoints übernehmen den Übergang Registry → Serving aus deinen Händen',
+      'Ein verwalteter Endpoint übernimmt Skalierung, Health und die Prediction-API; deine Aufgabe ist, welche Version du beförderst',
+      'Die `churn-model:vN → endpoint`-Zuordnung hier ist dieselbe Beförderung, die ein Vertex-Deploy macht',
+    ],
+    fieldNotes: [
+      'Die verwaltete Registry nutzen, damit Versionsnummern der Vertrag über Teams hinweg sind, nicht ein Pfad',
+      'Bewusst befördern: Ein verwalteter Endpoint macht das Deploy zu einer prüfbaren Aktion, nicht zu einem Skript',
+    ],
+    startDialog: [
+      {
+        title: 'Der verwaltete Weg zu „deploy"',
+        markdown:
+          'Auf GCP verbindet **Vertex AI** eine Model Registry mit verwalteten Endpoints.\n\n[Vertex AI Model Registry → https://cloud.google.com/vertex-ai/docs/model-registry](https://cloud.google.com/vertex-ai/docs/model-registry)\n\nDu registrierst eine Version und deployst sie zu einem verwalteten Endpoint — derselbe Registry → Serving-Schritt wie `ml deploy`.',
+      },
+      {
+        title: 'Befördern auf live',
+        markdown:
+          'Bringe das registrierte Modell zum Endpoint.\n\n```\nml deploy exp-1\n```\n\n`prod` wird auf der beförderten Version live. In Vertex ist dies der verwaltete Endpoint, der jetzt `churn-model:v1` serviert.',
+      },
+    ],
+  },
+  'tool-airflow': {
+    seriesTitle: 'Toolbox',
+    name: 'Die Ingest-Stufe in Airflow planen',
+    objective:
+      'Einen versionierten Daten-Snapshot nach Zeitplan erzeugen — die Aufgabe, die eine Airflow-DAG jeden Zyklus fährt, um den Rest des Lifecycle zu speisen.',
+    learning: [
+      'Airflow fährt Datenaufgaben nach Zeitplan und behält eine Aufgabengeschichte bei — die „ingest"-Stufe als dauerhaftes Job, nicht als einmaliges Skript',
+      'Jeder Lauf der DAG legt eine neue Datenversion an; das ist der `ml data add`-Schritt, gemacht wiederholbar und beobachtbar',
+      'Ein Scheduler macht „frische Daten" zu einer Garantie, auf die du dich verlässt, sodass downstream-Training immer eine echte Version pinnt',
+    ],
+    fieldNotes: [
+      'Die Daten in der DAG-Stufe selbst versionieren, damit jedes downstream-Training reproduzierbar auf einen benannten Snapshot läuft',
+      'Airflows Retry + Alarme sind es, was ein defektes Ingest daran hindert, still veraltete Daten in das Training zu speisen',
+    ],
+    startDialog: [
+      {
+        title: 'Das Tool hinter „data add"',
+        markdown:
+          'Frische, versionierte Daten nach Zeitplan — wofür **Airflow** da ist.\n\n[Airflow-Doku → https://airflow.apache.org/docs/](https://airflow.apache.org/docs/)\n\nEine DAG-Aufgabe zieht neue Daten und schreibt eine Version — die `ingest`-Stufe deiner Schiene, laufend im Takt, jedes Mal.',
+      },
+      {
+        title: 'Die Version erzeugen',
+        markdown:
+          'Fahre das Ingest: Versioniere den Datensatz, damit Training etwas zum Pinnen hat.\n\n```\nml data add data/train.csv\n```\n\nIn einer echten DAG läuft genau dieser Schritt auf einem Cron und legt jeden Zyklus eine neue `train@N` ab.',
+      },
+    ],
+  },
+  'tool-dvc': {
+    seriesTitle: 'Toolbox',
+    name: 'Daten mit DVC versionieren',
+    objective:
+      'Den Datensatz als versioniertes, inhaltsadressiertes Objekt tracken — genau das, was DVC mit `dvc add` und der `.dvc`-Pointer-Datei tut.',
+    learning: [
+      'DVC speichert die eigentlichen Bytes in einer Remote-Storage und behält nur einen Hash-Pointer in Git — `ml data add` simuliert genau diese Trennung',
+      'Die Content-ID, die du siehst (`train@1`), ist dieselbe Idee wie DVCs Content-Hash: eine stabile, auditierbare Identität der Daten',
+      'Daten wie Code zu versionieren bedeutet: „Welche Daten trainierten dieses Modell?" hat immer einen Hash, auf den man zeigen kann',
+    ],
+    fieldNotes: [
+      'Große Datensätze aus Git heraus und in DVC-Remote-Storage halten; committe nur die kleinen Hash-Pointer',
+      'Training auf eine DVC-Version pinnen, damit Experimente auf jeder Maschine reproduzierbar sind',
+    ],
+    startDialog: [
+      {
+        title: 'Das Tool hinter Daten-Versionen',
+        markdown:
+          'Große Datensätze, die wie Code versionieren? Das ist **DVC**.\n\n[DVC-Doku → https://dvc.org/doc](https://dvc.org/doc)\n\n```\ndvc add data/train.csv   # speichert die Datei, behält einen .dvc-Hash-Pointer in Git\n```\n\n`ml data add` ist derselbe Schritt: ein benanntes Objekt mit Content-Versionen.',
+      },
+      {
+        title: 'Den Datensatz versionieren',
+        markdown:
+          'Bringe die Daten unter Versionskontrolle.\n\n```\nml data add data/train.csv\n```\n\nDie Dataset-Zone zeigt `train [v1]` mit einer Content-ID — der DVC-Pointer, gemacht sichtbar.',
+      },
+    ],
+  },
+  'tool-sagemaker': {
+    seriesTitle: 'Toolbox',
+    name: 'Ein SageMaker-Endpoint anlegen',
+    objective:
+      'Das registrierte Modell auf einen live Endpoint deployen — die AWS-verwaltete Version von `ml deploy`, wie `sagemaker create-endpoint` es tut.',
+    learning: [
+      'Amazon SageMaker macht ein registriertes Modell zu einem live, automatisch skalierenden Endpoint über die Model Registry',
+      '`ml deploy` und `sagemaker create-endpoint` sind dieselbe Beförderung: eine Registry-Version wird zu einem aufrufbaren, live Service',
+      'Der verwaltete Endpoint besitzt die Instanzen und die Skalierung; du besitzt die Entscheidung, welche Version du beförderst',
+    ],
+    fieldNotes: [
+      'Zuerst registrieren, dann deployen — Sagemakers Model Registry ist dieselbe Staging → Production-Disziplin, die du schon nutzt',
+      'Der Endpunkt-Name ist der Vertrag, den deine Aufrufer treffen; die Modellversion dahinter ist dein Hebel',
+    ],
+    startDialog: [
+      {
+        title: 'Das Tool hinter „deploy" auf AWS',
+        markdown:
+          'Auf AWS ist **SageMaker** der verwaltete Weg von der Registry zum live Endpoint.\n\n[Amazon SageMaker Model Registry → https://docs.aws.amazon.com/sagemaker/latest/dg/model-registry.html](https://docs.aws.amazon.com/sagemaker/latest/dg/model-registry.html)\n\n```\naws sagemaker create-endpoint --endpoint-name prod --model-name churn\n```\n\nGleiche Idee wie `ml deploy`: einen live Endpoint auf eine Registry-Version zeigen.',
+      },
+      {
+        title: 'Live bringen',
+        markdown:
+          'Deploye das registrierte Modell.\n\n```\nml deploy exp-1\n```\n\n`prod` wechselt auf live mit `churn-model:v1` — der SageMaker-Endpoint, der jetzt diese Version serviert.',
+      },
+    ],
+  },
+  'tool-tfx': {
+    seriesTitle: 'Toolbox',
+    name: 'Validierung zur Pipeline mit TFX hinzufügen',
+    objective:
+      'Die train → register → deploy-Sequenz fahren, so wie eine TFX-Pipeline jede Stufe auf eine Validierung prüft, bevor ein Modell shippen darf.',
+    learning: [
+      'TFX verdrahtet eine komplette MLOps-Pipeline — Datenvalidierung, Training, Modellvalidierung und Publishing — als verbundene Komponenten',
+      'Die `push`-Stufe veröffentlicht ein validiertes Modell in die Registry; das ist der register-Schritt, umgeben von Prüfungen',
+      'Validierung ist es, was „es trainiert" zu „es darf shippen" macht — ein Tor an jeder Stufe, nicht eine Hoffnung',
+    ],
+    fieldNotes: [
+      'TFX-Schema-Validierung eine schlechte Datenversion blockieren lassen, bevor sie je das Training erreicht',
+      'Modellvalidierung + die `push`-Stufe machen die Beförderung zu einer Policy-Entscheidung, die die Pipeline durchsetzt',
+    ],
+    startDialog: [
+      {
+        title: 'Das Tool hinter „eine geprüfte Pipeline"',
+        markdown:
+          '**TFX** ist ein Komponenten-Framework, das die komplette validierte Pipeline baut: Datenvalidierung → train → Modellvalidierung → `push`.\n\n[TFX-Doku → https://www.tensorflow.org/tfx/guide](https://www.tensorflow.org/tfx/guide)\n\nDie `push`-Komponente veröffentlicht ein validiertes Modell in die Registry — dein `ml model register` mit Toren drumherum.',
+      },
+      {
+        title: 'Die Pipeline-Hälfte fahren',
+        markdown:
+          'Fahre train → register → deploy. Das Ziel ist der volle Weg: ein validiertes Modell, registriert und dann live.\n\n```\nml train run -n exp-1 -p lr=0.1 -p depth=40\nml model register exp-1 --name churn-model\nml deploy exp-1\n```\n\nJede Stufe in TFX ist eine Komponente, die bestehen muss, bevor die nächste läuft.',
+      },
+    ],
+  },
+  'tool-mlrun': {
+    seriesTitle: 'Toolbox',
+    name: 'Den ganzen Kreis in MLrun tracken',
+    objective:
+      'Den Kreis Daten → train → register → deploy von Anfang bis Ende fahren — die Run-und-Track-Story, für die MLrun gebaut ist, mit jedem Schritt in ein Projekt loggend.',
+    learning: [
+      'MLrun zeichnet Experimente, Modelle und Pipelines in ein einzelnes Projekt, das du inspizieren und reproduzieren kannst',
+      'Daten → Modell → live in einem Durchlauf zu fahren ist der ganze Kreis, den MLrun als abfragbare Historie behält',
+      'Wenn jeder Schritt in dasselbe Projekt loggt, ist die Lineage eines Modells ein Dashboard, nicht eine Archäologie-Grabung',
+    ],
+    fieldNotes: [
+      'Alles durch MLrun fahren, damit Daten, Run, registriertes Modell und Deploy eine Lineage teilen',
+      'Eine einzelne Projekt-Ansicht ist es, was „dieses Modell reproduzieren" zu einem Klick macht statt zu einer Rekonstruktion',
+    ],
+    startDialog: [
+      {
+        title: 'Das Tool hinter „alles tracken"',
+        markdown:
+          '**MLrun** behält Runs, Modelle und Pipelines in einem Projekt, das du von Anfang bis Ende nachverfolgen kannst.\n\n[MLrun-Doku → https://mlrun.org/docs/](https://mlrun.org/docs/)\n\nDeinen Lifecycle zu fahren ist es, was MLrun loggt — jede Stufe landet als durchsuchbares Artefakt im Projekt.',
+      },
+      {
+        title: 'Den Kreis fahren',
+        markdown:
+          'Bringe das Projekt von unversionierten Daten zu einem live Modell in einer Sequenz.\n\n```\nml data add data/train.csv\nml train run -n exp-1 -p lr=0.1 -p depth=40\nml model register exp-1 --name churn-model\nml deploy exp-1\n```\n\nJeder Befehl ist ein Schritt des Kreises, den MLrun in dasselbe Projekt aufzeichnen würde.',
+      },
+    ],
+  },
 };
