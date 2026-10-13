@@ -96,50 +96,122 @@ export const fa: Catalog = {
   },
   glossary: {
     'dataset-version': {
+      deepdive: [
+        'نتیجه‌ی صریح: مدلِ آموزش‌دیده یک تابع خالص از (code، data، hyperparameters) است. نسخه‌سازیِ داده، run را قابل‌تکرار از طریق ref می‌کند — می‌توانید `exp-1` را bit-to-bit از `v_code + v_data + v_params` بازسازی کنید.',
+        'چرا: «reproducibility» در ML سال‌ها فقط به‌خاطر همین شکست خورد، چون «آخرین» یک ref نیست (Baker 2016، *Nature*، ۱۵۰۰ دانشمند درباره‌ی reproducibility). pin کردنِ نسخه‌ی داده همان fix است.',
+        'شیء‌ها و روش‌های صریح: versioning با آدرسِ content (Git SHA، pointerهای hash از DVC)؛ Rehg et al., *Reproducibility in Machine Learning* (arXiv:1810.03251).',
+        'فرانتیرهای باز: snapshotهای delta/فشرده در مقیاس petabyte؛ reproducibilityِ *نتایج* (نه صرفا‌ً artifact) زیر GPU-ness-determinism و init تصادفی.',
+      ],
       title: 'نسخه‌ی دیتاست',
       body: 'دیتاست یک شیء است با نسخه‌های شماره‌دار و immutable و یک pointerِ `current` (`train@1`). آموزش در برابر یک نسخه، نه «آخرین»، همان چیزی است که نتایج را reproducible می‌کند.',
     },
     lineage: {
+      deepdive: [
+        'نتیجه‌ی صریح: یک مدل یک *provenance*-query است. از یک اندپوینت می‌توانید در O(1) پاسخ دهید «کدام داده، code، و hyperparameters» آن را ساخته‌اند — debugging و compliance به یک graph-walk تبدیل می‌شوند، نه باستان‌شناسی.',
+        'شیء‌ها و روش‌های صریح: dataflow / provenance tracking. فرمول‌بندیِ خاصِ ML، *model lineage* روی یک execution graph است (Maddison et al., “MADMAX: A Scalable Execution Engine for Machine Learning Pipelines”, KDD 2021)؛ مرتبط با OpenLineage.',
+        'چرا سخت است: lineage باید از میان *تبدیل‌ها* (aggregate، join، subset) در بماند — ref باید یک content hash باشد، نه یک نام.',
+        'فرانتیرهای باز: lineage بین‌سازمانی (federal)؛ lineageی *features* (feature stores) در برابر datasetها؛ lineageی cause — کدام داده یک prediction را *دنبال* کرده است.',
+      ],
       title: 'lineage',
       body: 'پیوند داده → run → نسخه‌ی مدل → deploy. یک run مقدار `train@1` را ثبت می‌کند؛ یک نسخه‌ی registerشده آن ref را نگه می‌دارد؛ اندپوینت یک نسخه‌ی نام‌دار سرویس می‌کند. «کدام داده این مدل را ساخت؟» حالا پاسخ دارد.',
     },
     run: {
+      deepdive: [
+        'نتیجه‌ی صریح: یک run یک *point estimate از generalization function* در (data، params) است. شما یک run را ship نمی‌کنید — *decision* را روی یک *distribution* از runs ship می‌کنید (variance همان uncertainty صادقانه‌ای است که گزارش می‌دهید).',
+        'شیء‌ها و روش‌های صریح: experiment design — randomization، control group، effect size. در عمل *hyperparameter search* (Bayesian optimization؛ TPE از الگوریتم SMAC) و *statistical model selection* با seedها/split تکراری.',
+        'چرا: یک metricِ گزارش‌شده به‌تنهایی با bias به‌بالاست («winner’s curse» — بهترین runی که می‌بینید، عملکرد واقعی را زیاد می‌گوید). mean ± std را روی seedها/split تکراری گزارش کنید.',
+        'فرانتیرهای باز: calibrated confidence برای یک runِ تنها؛ sample-efficiency در hyperparameter tuning؛ reproducibility در سراسر نسخه‌های کتابخانه.',
+      ],
       title: 'run',
       body: 'یک آزمایش آموزش: params + metrics + نسخه‌ی داده‌ی مصرفی، به‌علاوه یک status. runs نتایج آزمایشگاهی‌اند — نگه‌داشتنشان ارزان، مقایسه‌شان آسان، و هرگز به‌تنهایی قابل deploy نیستند.',
     },
     registry: {
+      deepdive: [
+        'نتیجه‌ی صریح: یک registry «کدام مدل authoritative است» را به یک تصمیمِ *governance* با audit trailِ versioned تبدیل می‌کند، نه یک artifact که اتفاقا‌ً در یک bucket خوابیده. promotion (Staging → Production) یک policy gate است.',
+        'شیء‌ها و روش‌های صریح: versioning از software-artifact با metadata (مثل container registry، ولی با model metrics به‌عنوان سیگنالِ انتخاب). MLflow Model Registry، SageMaker Model Registry.',
+        'چرا: بدون registry، هدفِ deploy «مدل روی لپ‌تاپ من» است؛ با آن، `model:vN` است و هر deploy قابل‌تکرار و قابل‌review است.',
+        'فرانتیرهای باز: promotionی lineages-aware (ردِ خودکارِ نسخه‌ای که داده‌اش یک quality regression شناخته‌شده دارد)؛ model provenance بین‌تیمی؛ deprecated کردن نسخه‌ها بدون شکستن مصرف‌کننده‌های live.',
+      ],
       title: 'رجیستری مدل',
       body: 'کاتالوگ مدل‌های قابل deploy، هرکدام با نسخه‌های شماره‌دار و یک stage (Staging/Production). یک run خوب را در یک نسخه register می‌کنید، بعد آن نسخه را روی یک اندپوینت deploy می‌کنید.',
     },
     champion: {
+      deepdive: [
+        'نتیجه‌ی صریح: champion/challenger یک *live A/B test* است که در آن challenger یک نسخه‌ی مشخصِ مدل است، نه یک بازوی کنترل تصادفی. promotion یک decision rule روی measured lift با یک cost-of-regression bound است.',
+        'شیء‌ها و روش‌های صریح: sequential / adaptive testing — مسئله‌ی اصلی این است که *زود* promote کنیم وقتی evidence قوی است، ولی *هرگز* یک مدل regressing را. همین‌جاست که *banditها* (explore-exploit) به *multiple-testing correction* می‌رسند. ببینید: «Best-Arm Identification» و adaptive allocation (Thompson sampling) در online experiments.',
+        'چرا: «challenger روی test set از champion بهتر است» یک *selection bias* است از انتخاب بهترینِ میانِ برآوردهای نویزدار. championِ test-set، championِ production نیست مگر اینکه تعداد کاندیداها را correct کنید.',
+        'فرانتیرهای باز: off-policy evaluation — می‌توانیم production lift یک challenger را از logged traffic تخمین بزنیم بدون اینکه serve شود (IPS / doubly-robust estimator)؟؛ drift-adaptive promotion rules.',
+      ],
       title: 'champion / challenger',
       body: 'champion همان نسخه‌ای است که اکنون در Production سرویس می‌دهد؛ challenger یک نسخه‌ی تازه‌تر Staging است که در حال ارزیابی است. deploy challenger را ترفیع می‌دهد و championِ قدیمی را به rollback target تنزل می‌دهد.',
     },
     endpoint: {
+      deepdive: [
+        'نتیجه‌ی صریح: serving یک مسئله‌ی *resource allocation* است، نه «اجراکردن اسکریپت». اندپوینت آن‌جاست که cost، latency SLAs، و throughput به‌هم می‌خوردند — و یک مدلِ خوبِ *offline* می‌تواند یک مدلِ بدِ *production* باشد.',
+        'شیء‌ها و روش‌های صریح: batching (dynamic/continuous batching — vLLM، Orca)، quantization (INT8/FP8) و distillation برای کوچک‌کردن compute؛ autoscaling (HPA، KEDA، scale-to-zero در KServe)؛ load balancing بین replicaها.',
+        'چرا: latencyِ یک مدل زیر *request mix* واقعی (طولِ متغیرِ ورودی، peak load) یک propertyِ systems است، نه propertyِ عددِ accuracy.',
+        'فرانتیرهای باز: serving cost به‌عنوان سیگنالِ درجه‌یکِ model selection (accuracy-per-dollar)؛ speculative decoding؛ multi-model routing (مدلِ کوچک به‌عنوان fast path، مدلِ بزرگ به‌عنوان fallback).',
+      ],
       title: 'اندپوینت',
       body: 'یک سرویس زنده که یک نسخه‌ی مدل سرویس می‌کند (`prod → churn-model:v1`). می‌تواند `cold` (آفلاین) یا `live` باشد و تعداد پیش‌بینی‌های سرویس‌داده‌شده را می‌شمارد.',
     },
     'deploy-swap': {
+      deepdive: [
+        'نتیجه‌ی صریح: یک model deploy یک *تغییر در یک online systemِ استوکاستیک* است، و swap همان لحظه‌ای است که یک distributionِ شناخته‌شده‌ی درست را با یک distributionِ شاید بهتر عوض می‌کنید. جوابِ مهندسی همان پاسخِ هر تغییرِ پرخطرِ infra است: قبل از اینکه پرخطر شود، reversible کنید.',
+        'شیء‌ها و روش‌های صریح: progressive delivery — canary، blue/green، shadow/parallel؛ swap یک تغییرِ *routing* است، نه تعویضِ process. امنیت در ثبتِ state قبلی است (اینجا: rollback target).',
+        'چرا: مدل‌ها *در لبه‌ی data distribution*ی شکست می‌خورند که تست نکرده‌اید؛ یک canary با یک automatic tripwire (error rate، latency، drift) blast radius را محدود می‌کند پیش از آنکه ترافیک را عوض کنید.',
+        'فرانتیرهای باز: rollback خودکارِ triggerشده توسط online metrics (نه انسان)؛ multi-region consistency از «کدام نسخه champion است»؛ rolloutِ امنِ مدل‌هایی که *schema*ی پیش‌بینی را عوض می‌کنند.',
+      ],
       title: 'تعویض deploy',
       body: 'deploy اندپوینت را به یک نسخه‌ی جدید نشانه می‌رود و آن را به Production ترفیع می‌دهد. لحظه‌ی پرخطر همان swap است — نسخه‌ی live قبلی پیش از آن ثبت می‌شود تا بتوانید برگردید.',
     },
     rollback: {
+      deepdive: [
+        'نتیجه‌ی صریح: rollback یک *state restore* است و ارزشش با *mean-time-to-recovery* (MTTR) می‌سزد — هرچه MTTR پایین‌تر، incident کوچک‌تر. ثبتِ هدف *در لحظه‌ی deploy* همان چیزی است که restore را O(1) می‌کند، نه «کدام نسخه بود دوباره؟».',
+        'شیء‌ها و روش‌های صریح: idempotent state transitions + immutable versioned artifacts (تا «v1» همیشه همان bytes باشد)؛ rollback target همان *previous-state pointer* کلاسیکِ زیرساختِ reversible است (feature flags، DB migrations).',
+        'چرا: ساعت ۲ صبح نباید history rebuild کنید. یک target ثبت‌شده، یک incidentِ ۲۰ دقیقه‌ای را به یک restore‌ی یک-command تبدیل می‌کند.',
+        'فرانتیرهای باز: rollback *partial* (یک مدل را برگردان ولی data pipeline جدید را نگه دار)؛ rollback زیر drift — آیا مدل «قبلی» واقعا‌ً هنوز خوب است، یا داده از سرِ او رفته است؟؛ rollback هماهنگیِ multi-model.',
+      ],
       title: 'rollback target',
       body: 'مدل live قبلی، ثبت‌شده در هنگام deploy و مصرفی با `ml rollback`. یک تورباز یک‌بارمصرف: دقیقاً همان نسخه‌ی شناخته‌شده‌ی درست را بدون retraining یا حدس برمی‌گردانید.',
     },
     monitoring: {
+      deepdive: [
+        'نتیجه‌ی صریح: مدلِ deployشده یک *measurement system* است، نه یک برنامه. monitoring همان feedback است که «یک‌بار کار کرد» را به یک controlled process تبدیل می‌کند — از نظر آماری، یک control chart روی یک سیستمِ non-stationary است.',
+        'شیء‌ها و روش‌های صریح: statistical process control (control limits، EWMA)؛ *change-point detection* روی drift (ADWIN، DDM — «Drift Detection Method»)؛ تمایز بین *data drift* و *concept drift* (ورودی‌ها جابه‌جا می‌شوند، یا رابطه‌ی target با ورودی‌ها جابه‌جا می‌شود).',
+        'چرا: بیشتر شکست‌های مدل *خاموش*‌اند — accuracy بدون هیچ errorی کم می‌شود. monitoring تمایز می‌دهد بین جابه‌جایی داده و جابه‌جایی قواعد دنیا، که پاسخ‌های متفاوت می‌خواهد.',
+        'فرانتیرهای باز: unsupervised detection از *label drift* بدون ground truth؛ monitoringی cost-aware (کِی retraining ارزش دارد؟)؛ detection با privacy constraints روی live stream.',
+      ],
       title: 'پایش',
       body: 'نگهبانی مداوم روی یک اندپوینت زنده: کیفیت زنده به‌علاوه یک آستانه‌ی drift روی داده. روشن کردن پایش همان چیزی است که حلقه‌ی چرخه را می‌بندد (… → deploy → monitor).',
     },
     drift: {
+      deepdive: [
+        'نتیجه‌ی صریح: drift یک مسئله‌ی *distribution-shift* است. مدل روی P_train(x,y) fit شده؛ در production، P_test(x,y) ≠ P_train(x,y) را می‌بیند. سؤالِ صادق این است که *کدام* joint عوض شده: marginalِ ورودی (data drift)، رابطه‌ی label (concept drift)، یا هر دو.',
+        'شیء‌ها و روش‌های صریح: divergence‌ی توزیع به‌عنوان detector — Kullback–Leibler، MMD (maximum mean discrepancy)، testِ *Kolmogorov–Smirnov*، و در عمل PSI (population stability index). برای concept drift، online classifierها با *فراموشی* (AdaHoeffding، Hoeffding Adaptive Tree).',
+        'چرا «داده‌ی نسخه‌شده»: drift *نسبی* است — می‌توانید یک shift فقط در برابرِ baselineی `train@N` اندازه بگیرید که مدل روی آن fit شده. بدون نسخه، بدون baseline، بدون drift.',
+        'فرانتیرهای باز: *covariate shift* در برابر *label shift* در برابر *causality shift* متفاوت‌اند و هرکدام به correction متفاوتی نیاز دارد؛ detection در داده‌ی *high-dimensional* یا *graph*؛ کِی retraining روی داده‌ی driftشده اوضاع را بدتر می‌کند.',
+      ],
       title: 'drift',
       body: 'جابه‌جایی خاموش در داده‌ی ورودیِ زنده که دقت را با گذر زمان خراب می‌کند. پایش آن را امتیاز می‌دهد؛ بالاتر از آستانه‌ی فعال، به یک هشدار drift تبدیل می‌شود. داده‌ی نسخه‌شده همان چیزی است که drift را قابل‌کشف می‌کند.',
     },
     params: {
+      deepdive: [
+        'نتیجه‌ی صریح: یک metric *بدونِ configِ خودش بی‌معنی است* — همان «acc 0.93» می‌تواند از یک مدلِ regularized یا از یک مدلِ memorized بیاید. ثبتِ params عدد را به یک *reproducible claim* تبدیل می‌کند.',
+        'شیء‌ها و روش‌های صریح: hyperparameters در یک *search space* زندگی می‌کنند؛ نظریه همان *inductive bias* است که tune می‌کنید (مثلا‌ً learning rate قدم را در basinِ همگراییِ gradient descent تنظیم می‌کند؛ depth ظرفیتِ مدل را در برابر generalization تنظیم می‌کند — trade-offِ bias/variance).',
+        'چرا: pairِ metric–config واحدِ یک findingِ علمی است. «کار می‌کند» بدون config یک anecdote است؛ «acc 0.93 @ lr=0.05, depth=60 روی train@1» یک finding است.',
+        'فرانتیرهای باز: *transfer*ی hyperparameters بین datasetها/مقیاس‌ها (learning-rate scaling laws)؛ هزینه‌ی *reproducible tuning* زیر stochastic optimization؛ auto-config (AutoML) به‌عنوان یک search روی همین space.',
+      ],
       title: 'params',
       body: 'هایپرپارامترهای قابل‌ریویو برای انسان (lr, depth). با `ml params set` یا `-p` تنظیم می‌شوند و در هر run ثبت می‌شوند تا هر metric همیشه با config سازنده‌اش جفت باشد.',
     },
     loop: {
+      deepdive: [
+        'نتیجه‌ی صریح: حلقه یک *feedback control system* برای یک artifactِ stochastic است. «shipped» یک *state* است (هر پنج invariant برقرار است)، نه یک *event* — مدل «تمام» است فقط وقتی feedback (monitoring) می‌تواند یک regression را بگیرد و سیستم می‌تواند recover کند (rollback).',
+        'شیء‌ها و روش‌های صریح: control theory (set-point، sensor، actuator) اعمال‌شده روی model quality؛ triggerِ drift→retraining یک *closed-loop actuator* است. از نظر systems، یک *pipeline DAG* با یک *re-entrant edge* است (monitor → ingest/train).',
+        'چرا کل حلقه: یک stage به‌تنهایی یک *batch* job است؛ حلقه همان چیزی است که ML را به یک *operated service* تبدیل می‌کند. هر فلش یک ownership- و audit boundary است.',
+        'فرانتیرهای باز: *continuous learning* — بستنِ خودکارِ حلقه (retraining روی drift بدون انسان)؛ اقتصادِ *چه‌قدرِ* retraining (cost در برابر staleness)؛ حلقه در میان *چند* مدل و dataی share‌شده (یک graph، نه یک line).',
+      ],
       title: 'حلقه‌ی MLOps',
       body: 'ingest → train → eval → register → deploy → monitor، و بازگشت. «shipped» یعنی کل حلقه هم‌زمان برقرار است: داده نسخه‌شده + مدل registerشده + اندپوینت live + پایش روشن + rollback در دسترس.',
     },

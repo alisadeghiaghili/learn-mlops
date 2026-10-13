@@ -98,50 +98,122 @@ export const de: Catalog = {
     'dataset-version': {
       title: 'Dataset-Version',
       body: 'Ein Dataset ist ein Objekt mit nummerierten, unveränderlichen Versionen und einem `current`-Zeiger (`train@1`). Gegen eine Version zu trainieren, nicht „latest”, macht Ergebnisse reproduzierbar.',
+      deepdive: [
+        'Das Ergebnis: Ein trainiertes Modell ist eine reine Funktion von (Code, Daten, Hyperparametern). Die Daten zu versionieren macht den Run über eine Referenz reproduzierbar — du kannst `exp-1` Bit für Bit aus `v_code + v_data + v_params` rekonstruieren.',
+        'Warum: „Reproduzierbarkeit” im ML versagte jahrelang genau deshalb, weil „latest” keine Referenz ist (Baker 2016, *Nature*, 1.500 Wissenschaftler zur Reproduzierbarkeit). Die Daten-Version zu pinnen ist der Fix.',
+        'Formale Objekte & Methoden: content-adressiertes Versioning (Git-SHA, DVC-Hash-Pointer); Rehg et al., *Reproducibility in Machine Learning* (arXiv:1810.03251).',
+        'Offene Grenzen: Delta-/komprimierte Snapshots im Petabyte-Bereich; Reproduzierbarkeit von *Ergebnissen* (nicht nur Artefakten) unter GPU-Non-Determinismus und zufälligem Init.',
+      ],
     },
     lineage: {
       title: 'Lineage',
       body: 'Die Verknüpfung Daten → Run → Modellversion → Deploy. Ein Run protokolliert `train@1`; eine registrierte Version behält diese Referenz; der Endpoint dient eine benannte Version. „Welche Daten haben dieses Modell erzeugt?” hat jetzt eine Antwort.',
+      deepdive: [
+        'Das Ergebnis: Ein Modell ist eine *Provenance*-Abfrage. Aus einem Endpoint kannst du in O(1) beantworten, „welche Daten, welcher Code, welche Hyperparameter” es erzeugt haben — Debugging und Compliance werden zu einem Graphen-Abgang, nicht zu Archäologie.',
+        'Formale Objekte & Methoden: Dataflow-/Provenance-Tracking. Die ML-spezifische Formulierung ist *Model Lineage* über einen Ausführungsgraphen (Maddison et al., „MADMAX: A Scalable Execution Engine for Machine Learning Pipelines”, KDD 2021); verwandt mit OpenLineage.',
+        'Warum es schwer ist: Lineage muss *Transformationen* überleben (Aggregation, Join, eine Teilmenge) — die Referenz muss ein Content-Hash sein, kein Name.',
+        'Offene Grenzen: Cross-Organisation-Lineage (föderiert); Lineage von *Features* (Feature-Stores) vs. Datensätzen; kausale Lineage — welche Daten *verursachten* eine Vorhersage.',
+      ],
     },
     run: {
       title: 'Run',
       body: 'Ein Trainingsexperiment: Params + Metriken + die verwendete Daten-Version, plus Status. Runs sind Laborergebnisse — günstig zu halten, leicht zu vergleichen, nie allein deploybar.',
+      deepdive: [
+        'Das Ergebnis: Ein Run ist eine *Punkt-Schätzung der Generalisierungsfunktion* bei (Daten, Params). Du shippst keinen Run — du shippst die *Entscheidung* über eine *Verteilung* von Runs (ihre Varianz ist die ehrliche Unsicherheit, die du berichtest).',
+        'Formale Objekte & Methoden: experimentelles Design — Randomisierung, Kontrollgruppe, Effektgröße. In der Praxis *Hyperparameter-Suche* (Bayes-Optimierung; TPE aus dem SMAC-Verfahren) und *statistische Modellauswahl* mit wiederholten Seeds/Splits.',
+        'Warum: Eine einzelne berichtete Metrik ist hoch verzerrt (der „winner’s curse” — der beste Run, den du siehst, überschätzt die wahre Leistung). Berichte Mittel ± Std über wiederholte Seeds/Splits.',
+        'Offene Grenzen: kalibrierte Konfidenz für einen einzelnen Run; Sample-Effizienz der Hyperparameter-Tuning; Reproduzierbarkeit über Bibliotheksversionen hinweg.',
+      ],
     },
     registry: {
       title: 'Model-Registry',
       body: 'Der Katalog der deploybaren Modelle, jeweils mit nummerierten Versionen und einer Stufe (Staging/Production). Du registrierst einen guten Run in eine Version und deployst dann diese Version auf einen Endpoint.',
+      deepdive: [
+        'Das Ergebnis: Eine Registry macht „welches Modell ist maßgeblich” zu einer *Governance*-Entscheidung mit versionierter Prüfspur, nicht zu einem Artefakt, das zufällig in einem Bucket liegt. Die Beförderung (Staging → Production) ist ein Policy-Gate.',
+        'Formale Objekte & Methoden: Versionierung von Software-Artefakten mit Metadaten (wie Container-Registries, aber mit Modell-Metriken als Auswahl-Signal). MLflow Model Registry, SageMaker Model Registry.',
+        'Warum: Ohne Registry ist das Deployment-Ziel „das Modell auf meinem Laptop”; mit ihr ist es `model:vN`, und jedes Deployment ist reproduzierbar und prüfbar.',
+        'Offene Grenzen: lineagen-wusste Beförderung (automatisch eine Version ablehnen, deren Daten eine bekannte Qualitätsregression haben); Cross-Team-Modell-Provenance; das Deprécieren von Versionen ohne live Verbraucher zu brechen.',
+      ],
     },
     champion: {
       title: 'Champion / Challenger',
       body: 'Der Champion ist die Version, die aktuell in Production dient; ein Challenger ist eine neuere Staging-Version in Evaluation. Deploy befördert den Challenger und stuft den alten Champion zum Rollback-Ziel herab.',
+      deepdive: [
+        'Das Ergebnis: Champion/Challenger ist ein *live A/B-Test*, in dem der Challenger eine konkrete Modellversion ist, nicht ein zufälliger Kontrollarm. Die Beförderung ist eine Entscheidungsregel über gemessene Lifts mit einer Regression-Kosten-Grenze.',
+        'Formale Objekte & Methoden: sequentielle/adaptive Tests — das Kernproblem ist, *früh* zu befördern, wenn die Evidenz stark ist, aber *nie* ein regressierendes Modell. Genau dort treffen *Banditen* (Exploren-Exploiten) auf *Korrektur multipler Tests*. Siehe: „Best-Arm Identification”, adaptive Allokation (Thompson Sampling) in Online-Experimenten.',
+        'Warum: Ein naives „Challenger schlägt Champion im Testset” ist die *Auswahlverzerrung* des Besten unter vielen verrauschten Schätzungen. Der Testset-Champion ist nicht der Production-Champion, wenn du die Anzahl der Kandidaten nicht korrigierst.',
+        'Offene Grenzen: Off-policy-Evaluation — können wir den Production-Lift eines Challengers aus protokolliertem Traffic schätzen, ohne ihn zu servieren (IPS/doubly-robust Schätzer)?; drift-adaptive Beförderungsregeln.',
+      ],
     },
     endpoint: {
       title: 'Endpoint',
       body: 'Ein Live-Service, der eine Modellversion dient (`prod → churn-model:v1`). Er kann `cold` (offline) oder `live` sein und zählt die Vorhersagen, die er bedient hat.',
+      deepdive: [
+        'Das Ergebnis: Serving ist ein *Ressourcen-Allokations*-Problem, kein „Skript laufen lassen”. Der Endpoint ist dort, wo Kosten, Latenz-SLAs und Durchsatz kollidieren — und wo ein gutes *Offline*-Modell trotzdem ein schlechtes *Production*-Modell sein kann.',
+        'Formale Objekte & Methoden: Batching (dynamisches/kontinuierliches Batching — vLLM, Orca), Quantisierung (INT8/FP8) und Destillation zum Schrumpfen der Rechenlast; Autoscaling (HPA, KEDA, Scale-to-Zero in KServe); Lastverteilung über Replikate.',
+        'Warum: Die Latenz eines Modells unter *realer* Request-Mischung (variierender Eingabeprozess, Lastspitzen) ist eine System-Eigenschaft, nicht eine der Genauigkeitszahl.',
+        'Offene Grenzen: Serving-Kosten als erstklassiges Signal der Modellauswahl (Genauigkeit pro Dollar); spekulative Dekodierung; Multi-Modell-Routing (kleines Modell als Schnellweg, großes als Fallback).',
+      ],
     },
     'deploy-swap': {
       title: 'Deploy-Swap',
       body: 'Deploy zeigt den Endpoint auf eine neue Version und befördert sie zu Production. Der riskante Moment ist der Switch — die vorherige Live-Version wird zuerst aufgezeichnet, damit du zu ihr zurückkehren kannst.',
+      deepdive: [
+        'Das Ergebnis: Ein Modell-Deploy ist eine *Änderung in einem stochastischen Online-System*, und der Swap ist der Moment, in dem du eine bekannte-gute Verteilung gegen eine evtl. bessere tauschst. Die Ingenieursantwort ist dieselbe wie bei jeder riskanten Infrastruktur-Änderung: Mach sie *vor* dem Risiko umkehrbar.',
+        'Formale Objekte & Methoden: progressive Auslieferung — Canary, Blue/Green, Shadow/Parallel; der Swap ist eine *Routing*-Änderung, kein Prozess-Ersatz. Die Sicherheit liegt im Erfassen des vorherigen Zustands (hier: das Rollback-Ziel).',
+        'Warum: Modelle scheitern *an der Kante der Datenverteilung*, die du nicht getestet hast; ein Canary mit automatischem Tripwire (Fehlerrate, Latenz, Drift) begrenzt den Blast Radius, bevor du den Traffic umschaltest.',
+        'Offene Grenzen: automatischer Rollback durch Online-Metriken (nicht einen Menschen); Multi-Region-Konsistenz von „welche Version ist Champion”; sichere Auslieferung von Modellen, die das *Schema* der Vorhersagen ändern.',
+      ],
     },
     rollback: {
       title: 'Rollback-Ziel',
-      body: 'Das vorherige Live-Modell, zum Deploy-Zeitruf aufgezeichnet und von `ml rollback` verbraucht. Ein einmaliges Sicherheitsnetz: die exakte bekannte gute Version wiederherstellen, ohne neu zu trainieren oder zu raten.',
+      body: 'Das vorherige Live-Modell, zum Deploy-Zeitpunkt aufgezeichnet und von `ml rollback` verbraucht. Ein einmaliges Sicherheitsnetz: die exakte bekannte gute Version wiederherstellen, ohne neu zu trainieren oder zu raten.',
+      deepdive: [
+        'Das Ergebnis: Rollback ist eine *Zustandswiederherstellung*, und ihr Wert misst sich am *Mean-Time-to-Recovery* — je niedriger die MTTR, desto kleiner der Incident. Das Ziel *zum Deploy-Zeitpunkt* zu erfassen macht die Wiederherstellung O(1) statt „welche Version war es gleich?”.',
+        'Formale Objekte & Methoden: idempotente Zustandsübergänge + unveränderliche versionierte Artefakte (damit „v1” für immer dieselben Bytes sind); das Rollback-Ziel ist der klassische *Previous-State-Pointer* der umkehrbaren Infrastruktur (Feature-Flags, DB-Migrationen).',
+        'Warum: Um 2 Uhr nachts darfst du keine Historie rekonstruieren. Ein erfasstes Ziel macht einen 20-Minuten-Incident zu einer Ein-Befehl-Wiederherstellung.',
+        'Offene Grenzen: *partieller* Rollback (ein Modell zurückdrehen, die neue Daten-Pipeline behalten); Rollback unter Drift — ist das „vorherige” Modell wirklich noch gut, oder sind die Daten daran vorbei gezogen?; koordinierter Multi-Modell-Rollback.',
+      ],
     },
     monitoring: {
       title: 'Monitoring',
       body: 'Dauerhafte Überwachung eines Live-Endpoints: Live-Qualität plus eine Drift-Schwelle auf den Daten. Monitoring zu aktivieren schließt den Lebenszyklus-Kreis (… → deploy → monitor).',
+      deepdive: [
+        'Das Ergebnis: Ein deploytes Modell ist ein *Messsystem*, kein Programm. Monitoring ist das Feedback, das „es hat einmal funktioniert” in einen kontrollierten Prozess verwandelt — statistisch ist es ein Kontrollkarten-Chart auf einem nicht-stationären System.',
+        'Formale Objekte & Methoden: statistische Prozesskontrolle (Kontrollgrenzen, EWMA); *Change-Point*-Erkennung auf Drift (ADWIN, DDM — „Drift Detection Method”); Abgrenzung von *Data Drift* vs. *Concept Drift* (die Eingaben wandern, oder die Ziel-Beziehung zu den Eingaben wandert).',
+        'Warum: Die meisten Modell-Fehlschläge sind *still* — die Genauigkeit verblasst ohne jeden Fehler. Monitoring unterscheidet, ob sich die Daten bewegen oder die Regeln der Welt sich ändern, was unterschiedliche Antworten verlangt.',
+        'Offene Grenzen: unüberwachtes Erkennen von *Label*-Drift ohne Ground Truth; kostenbewusstes Monitoring (wann lohnt sich ein Retrain?); Erkennung mit Privacy-Einschränkungen auf dem Live-Stream.',
+      ],
     },
     drift: {
       title: 'Drift',
       body: 'Der stille Wandel im Live-Eingabedaten, der die Genauigkeit über Zeit verschlechtert. Monitoring scoret ihn; über der eingestellten Schwelle wird daraus eine Drift-Warnung. Versionierte Daten machen Drift erst detektierbar.',
+      deepdive: [
+        'Das Ergebnis: Drift ist ein *Distributions-Verschiebungs*-Problem. Das Modell wurde auf P_train(x,y) trainiert; in Production sieht es P_test(x,y) ≠ P_train(x,y). Die ehrliche Frage ist, *welches* Verbundene sich geändert hat: die Eingaben (Data Drift), die Ziel-Beziehung (Concept Drift), oder beides.',
+        'Formale Objekte & Methoden: Distributions-Divergenz als Detektor — Kullback–Leibler, MMD (Maximum Mean Discrepancy), der *Kolmogorov–Smirnov*-Test und in der Praxis PSI (Population Stability Index). Für Concept Drift Online-Klassifizierer mit *Vergessen* (AdaHoeffding, Hoeffding Adaptive Tree).',
+        'Warum „versionierte Daten”: Drift ist *relativ* — du kannst eine Verschiebung nur gegen die Referenz `train@N` messen, auf die das Modell gefittet war. Keine Version, kein Baseline, kein Drift.',
+        'Offene Grenzen: *Covariate Shift* vs. *Label Shift* vs. *Kausalitäts-Shift* sind unterschiedlich und brauchen unterschiedliche Korrekturen; Drift-Erkennung in *hochdimensionalen* oder *Graphen*-Daten; wann Retrain auf den drifteten Daten Schlimmeres macht.',
+      ],
     },
     params: {
       title: 'Params',
       body: 'Von Menschen prüfbare Hyperparameter (lr, depth). Mit `ml params set` oder `-p` gesetzt und bei jedem Run protokolliert, damit eine Metrik immer mit der Konfiguration verknüpft ist, die sie erzeugt hat.',
+      deepdive: [
+        'Das Ergebnis: Eine Metrik ist *ohne ihre Konfiguration bedeutungslos* — dasselbe „acc 0.93” kann von einem regularisierten oder von einem memorisierten Modell kommen. Params aufzuzeichnen macht aus einer Zahl einen *reproduzierbaren Befund*.',
+        'Formale Objekte & Methoden: Hyperparameter leben in einem *Suchraum*; die Theorie ist der *induktive Bias*, den du einstellst (z. B. setzt die Lernrate den Schritt in der Konvergenz-Becken des Gradientenabstiegs; Tiefe setzt Modell-Kapazität vs. Generalisierung — den Bias/Variance-Trade-off).',
+        'Warum: Das Metrik-Konfigurations-Paar ist die Einheit eines wissenschaftlichen Ergebnisses. „Es funktioniert” ohne Konfiguration ist Anekdote; „acc 0.93 @ lr=0.05, depth=60 auf train@1” ist ein Befund.',
+        'Offene Grenzen: *Transfer* von Hyperparametern über Datensätze/Größen (Lernraten-Skalengesetze); der Preis von *reproduzierbarem* Tuning unter stochastischer Optimierung; Auto-Konfig (AutoML) als Suche in diesem Raum.',
+      ],
     },
     loop: {
       title: 'Die MLOps-Schleife',
       body: 'ingest → train → eval → register → deploy → monitor und zurück. „Shipped” heißt, der ganze Kreis gleichzeitig gilt: Daten versioniert + Modell registriert + Endpoint live + Monitoring an + Rollback verfügbar.',
+      deepdive: [
+        'Das Ergebnis: Die Schleife ist ein *regelungstheoretisches Feedback-System* für ein stochastisches Artefakt. „Shipped” ist ein *Zustand* (alle fünf Invarianten gelten), kein *Ereignis* — das Modell ist „fertig”, wenn das Feedback (Monitoring) eine Regression fangen kann und das System sich erholen kann (Rollback).',
+        'Formale Objekte & Methoden: Regelungstheorie (Sollwert, Sensor, Aktuator) angewendet auf Modell-Qualität; der Drift→Retrain-Auslöser ist ein *geschlossener* Aktuator. In Systemen ist es ein *Pipeline-DAG* mit einer *re-entranten* Kante (monitor → ingest/train).',
+        'Warum der ganze Kreis: Eine einzelne Stufe ist ein *Batch*-Job; der Kreis macht ML zu einem *betriebenen Dienst*. Jeder Pfeil ist eine Ownership- und Prüfgrenze.',
+        'Offene Grenzen: *Continuous Learning* — den Kreis automatisch schließen (Retrain auf Drift ohne Menschen); die Ökonomie von *wie oft* man retrains (Kosten vs. Veraltung); der Kreis über *mehrere* Modelle und geteilte Daten (ein Graph, nicht eine Linie).',
+      ],
     },
   },
   ui: {
