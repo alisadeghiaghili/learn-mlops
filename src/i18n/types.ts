@@ -23,6 +23,12 @@ export interface TeachEntry {
 export interface GlossaryCopy {
   title: string;
   body: string;
+  /**
+   * The ELI-PHD on-ramp for a concept: the explicit research-level result
+   * (as a named claim), the theory/methods behind the intuition (with real
+   * references), and open frontiers. Shown under `concepts <term>`.
+   */
+  deepdive?: string[];
 }
 
 export interface QuizItemCopy {

@@ -98,50 +98,122 @@ export const en: Catalog = {
     'dataset-version': {
       title: 'Dataset version',
       body: 'A dataset is an object with numbered, immutable versions and a `current` pointer (`train@1`). Training against a version, not “latest”, is what makes results reproducible.',
+      deepdive: [
+        'The result: a trained model is a pure function of (code, data, hyperparameters). Version the data and the run becomes reproducible by reference — you can rebuild `exp-1` bit-for-bit from `v_code + v_data + v_params`.',
+        'Why: “reproducibility” in ML failed for years precisely because “latest” is not a reference (Baker 2016, *Nature*, 1,500 scientists on reproducibility). Pinning the data version is the fix.',
+        'Formal objects & methods: content-addressed versioning (Git SHA, DVC hash pointers); Rehg et al., *Reproducibility in Machine Learning* (arXiv:1810.03251).',
+        'Open frontiers: delta/compressed snapshots at petabyte scale; reproducibility of *results* (not just artifacts) under GPU non-determinism and random init.',
+      ],
     },
     lineage: {
       title: 'Lineage',
       body: 'The link data → run → model version → deploy. A run records `train@1`; a registered version keeps that ref; the endpoint serves a named version. “Which data produced this model?” now has an answer.',
+      deepdive: [
+        'The result: a model is a *provenance* query. Given a serving endpoint you can answer “which data, code, and hyperparameters produced this” in O(1) — this turns debugging and compliance into a graph walk, not archaeology.',
+        'Formal objects & methods: dataflow / provenance tracking. The ML-specific formulation is *model lineage* over an execution graph (Maddison et al., “MADMAX: A Scalable Execution Engine for Machine Learning Pipelines”, KDD 2021); related to OpenLineage and Openlineage spec.',
+        'Why it is hard: lineage must survive *transformations* (an aggregate, a join, a sampled subset) — the reference must be a content hash, not a name.',
+        'Open frontiers: cross-organization lineage (federated); lineage of *features* (feature stores) vs. datasets; causal lineage — which data *caused* a prediction.',
+      ],
     },
     run: {
       title: 'Run',
       body: 'One training experiment: params + metrics + the data version used, plus a status. Runs are lab results — cheap to keep, easy to compare, never deployable by themselves.',
+      deepdive: [
+        'The result: a run is a *point estimate of the generalization function* at (data, params). You do not ship a run — you ship the *decision* over a *distribution* of runs (its variance is the honest uncertainty you report).',
+        'Formal objects & methods: experimental design — randomization, control group, effect size. In practice, *hyperparameter search* (Bayesian optimization; TPE from the SMAC algorithm) and *statistical model selection* with repeated seeds/splits.',
+        'Why: a single reported metric is biased high (the “winner’s curse” — the best run you see overstates true performance). Report the mean ± std over repeated seeds/data splits.',
+        'Open frontiers: calibrated confidence for a single run; sample-efficiency of hyperparameter tuning; reproducibility across library versions.',
+      ],
     },
     registry: {
       title: 'Model registry',
       body: 'The catalog of deployable models, each with numbered versions and a stage (Staging/Production). You register a good run into a version, then deploy that version to an endpoint.',
+      deepdive: [
+        'The result: a registry makes “which model is authoritative” a *governance* decision with a versioned audit trail, not an artifact that happens to be in a bucket. Promotion (Staging → Production) is a policy gate.',
+        'Formal objects & methods: versioned software-artifact management with metadata (like container registries, but with model metrics as the selection signal). MLflow Model Registry, SageMaker Model Registry.',
+        'Why: without a registry the deployment target is “the model on my laptop”; with one it is `model:vN`, and every deployment is reproducible and reviewable.',
+        'Open frontiers: lineage-aware promotion (auto-reject a version whose data has a known quality regression); cross-team model provenance; deprecating versions without breaking live consumers.',
+      ],
     },
     champion: {
       title: 'Champion / challenger',
       body: 'The champion is the version currently serving in Production; a challenger is a newer Staging version being evaluated. Deploy promotes the challenger and demotes the old champion to the rollback target.',
+      deepdive: [
+        'The result: champion/challenger is a *live A/B test* where the challenger is a specific model version, not a random control arm. Promotion is a decision rule over measured lift with a cost-of-regression bound.',
+        'Formal objects & methods: sequential / adaptive testing — the core problem is to promote *early* when evidence is strong but *never* promote a regressing model. This is exactly where *bandits* (explore-exploit) meet *multiple-testing correction*. See: “Best-Arm Identification”, and adaptive allocation (Thompson sampling) in online experiments.',
+        'Why: a naive “challenger beats champion on the test set” is the *selection bias* of picking the best of many noisy estimates. The test-set champion is not the production champion unless you correct for the number of candidates.',
+        'Open frontiers: off-policy evaluation — can we estimate a challenger’s production lift from logged traffic without serving it (IPS / doubly-robust estimators)?; drift-adaptive promotion rules.',
+      ],
     },
     endpoint: {
       title: 'Endpoint',
       body: 'A live service that serves one model version (`prod → churn-model:v1`). It can be `cold` (offline) or `live`, and it counts the predictions it has served.',
+      deepdive: [
+        'The result: serving is a *resource allocation* problem, not a “run the script” problem. The endpoint is where cost, latency SLAs, and throughput collide — and where a good *offline* model can still be a bad *production* model.',
+        'Formal objects & methods: batching (dynamic/continuous batching — vLLM, Orca), quantization (INT8/FP8) and distillation to shrink compute; autoscaling (HPA, KEDA, scale-to-zero in KServe); load balancing across replicas.',
+        'Why: a model’s latency under *real* request mix (variable input length, peak load) is a systems property, not a property of the accuracy number.',
+        'Open frontiers: serving cost as a first-class model-selection signal (accuracy-per-dollar); speculative decoding; multi-model routing (small model fast path, big model fallback).',
+      ],
     },
     'deploy-swap': {
       title: 'Deploy swap',
       body: 'Deploy points the endpoint at a new version and promotes it to Production. The risky moment is the swap — the previous live version is captured first so you can return to it.',
+      deepdive: [
+        'The result: a model deploy is a *change in a stochastic online system*, and the swap is the moment you trade a known-good distribution for a possibly-better one. The engineering answer is the same as any risky infra change: make it reversible *before* it is risky.',
+        'Formal objects & methods: progressive delivery — canary, blue/green, and shadow/parallel deployment; the swap is a *routing* change, not a process replacement. The safety is capturing the prior state (here: the rollback target).',
+        'Why: models fail *at the edge of the data distribution* you did not test; a canary with automatic tripwire (error rate, latency, drift) bounds the blast radius before you roll the traffic over.',
+        'Open frontiers: automatic rollback triggered by online metrics (not a human); multi-region consistency of “which version is champion”; safe rollout of models that change the *schema* of predictions.',
+      ],
     },
     rollback: {
       title: 'Rollback target',
       body: 'The previous live model, recorded at deploy time and consumed by `ml rollback`. A one-shot safety net: restore the exact known-good version without retraining or guessing.',
+      deepdive: [
+        'The result: rollback is a *state restore*, and its value is measured in *mean-time-to-recovery* — the lower the MTTR the smaller the incident. Recording the target *at deploy time* is what makes the restore O(1) instead of “which version was it again?”.',
+        'Formal objects & methods: idempotent state transitions + immutable versioned artifacts (so “v1” is forever the same bytes); the rollback target is the classic *previous-state pointer* used in reversible infrastructure (feature flags, DB migrations).',
+        'Why: at 2am you must not be reconstructing history. A captured target turns a 20-minute incident into a one-command restore.',
+        'Open frontiers: *partial* rollback (revert one model but keep the new data pipeline); rollback under drift — is the “previous” model actually still good, or has the data moved past it?; multi-model coordinated rollback.',
+      ],
     },
     monitoring: {
       title: 'Monitoring',
       body: 'Continuous watch on a live endpoint: live quality plus a drift threshold on the data. Turning monitoring on is what closes the lifecycle loop (… → deploy → monitor).',
+      deepdive: [
+        'The result: a deployed model is a *measurement system*, not a program. Monitoring is the feedback that converts “it worked once” into a controlled process — statistically, it is a control chart on a non-stationary system.',
+        'Formal objects & methods: statistical process control (control limits, EWMA); *change-point detection* on drift (ADWIN, DDM — “Drift Detection Method”); labeling for *data drift* vs. *concept drift* (the inputs move, or the target’s relationship to the inputs moves).',
+        'Why: most model failures are *quiet* — accuracy decays without any error. Monitoring distinguishes the data moving from the world’s rules changing, which demands different responses.',
+        'Open frontiers: unsupervised detection of *label* drift without ground truth; cost-aware monitoring (when is a retrain worth it?); detection with privacy constraints on the live stream.',
+      ],
     },
     drift: {
       title: 'Drift',
       body: 'The quiet shift in live input data that degrades accuracy over time. Monitoring scores it; above the armed threshold it becomes a drift alert. Versioned data is what makes drift detectable.',
+      deepdive: [
+        'The result: drift is a *distribution-shift* problem. The model was trained on P_train(x,y); in production it sees P_test(x,y) ≠ P_train(x,y). The honest question is *which* joint changed: the input marginal (data drift), the label relationship (concept drift), or both.',
+        'Formal objects & methods: distribution divergence as the detector — Kullback–Leibler, MMD (maximum mean discrepancy), the *Kolmogorov–Smirnov* test, and PSI (population stability index) in practice. For concept drift, online classifiers with *forgetting* (AdaHoeffding, Hoeffding Adaptive Tree).',
+        'Why “versioned data”: drift is *relative* — you can only measure a shift against the reference `train@N` the model was fit on. No version, no baseline, no drift.',
+        'Open frontiers: *covariate shift* vs. *label shift* vs. *causality shift* are distinct and need different corrections; detecting drift in *high-dimensional* or *graph* data; when retraining on the drifted data makes things worse.',
+      ],
     },
     params: {
       title: 'Params',
       body: 'Human-reviewable hyperparameters (lr, depth). Set with `ml params set` or `-p`, and recorded on every run so a metric is always paired with the config that produced it.',
+      deepdive: [
+        'The result: a metric is *meaningless without its config* — the same “acc 0.93” can come from a regularized model or a memorized one. Recording params turns a number into a *reproducible claim*.',
+        'Formal objects & methods: hyperparameters live in a *search space*; the theory is the *inductive bias* you are tuning (e.g. learning rate sets the step in gradient descent’s convergence basin; depth sets model capacity vs. generalization — the bias/variance trade-off).',
+        'Why: the metric–config pair is the unit of a scientific result. “It works” without the config is anecdote; “acc 0.93 @ lr=0.05, depth=60 on train@1” is a finding.',
+        'Open frontiers: *transfer* of hyperparameters across datasets/scales (learning-rate scaling laws); the cost of *reproducible* tuning given stochastic optimization; auto-config (AutoML) as a search over this space.',
+      ],
     },
     loop: {
       title: 'The MLOps loop',
       body: 'ingest → train → eval → register → deploy → monitor, and back. “Shipped” means the whole loop holds at once: data versioned + model registered + endpoint live + monitoring on + rollback available.',
+      deepdive: [
+        'The result: the loop is a *feedback control system* for a stochastic artifact. “Shipped” is a *state* (all five invariants hold), not an *event* — the model is “done” only when the feedback (monitoring) can catch a regression and the system can recover (rollback).',
+        'Formal objects & methods: control theory (set-point, sensor, actuator) applied to model quality; the drift→retrain trigger is a *closed-loop* actuator. In systems terms it is a *pipeline DAG* with a *re-entrant* edge (monitor → ingest/train).',
+        'Why the whole loop: a single stage is a *batch* job; the loop is what makes ML an *operated service*. Every arrow is an ownership + audit boundary.',
+        'Open frontiers: *continuous learning* — closing the loop automatically (retrain on drift without a human); the economics of *how often* to retrain (cost vs. staleness); the loop across *multiple* models and shared data (a graph, not a line).',
+      ],
     },
   },
   ui: {

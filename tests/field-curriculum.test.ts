@@ -3,7 +3,8 @@ import { allLevels, curriculumOutcomes, getLevel } from '../src/levels';
 import { emptyMlopsState } from '../src/engine/state';
 import { executeCommand } from '../src/engine/commands';
 import { solutionComplete } from '../src/engine/solution';
-import { formatConcepts, CONCEPT_IDS } from '../src/engine/glossary';
+import { formatConcepts, CONCEPT_IDS, findConcept } from '../src/engine/glossary';
+import { en } from '../src/i18n/en';
 
 function runLevel(levelId: string, cmds?: string[]) {
   const level = getLevel(levelId)!;
@@ -64,5 +65,22 @@ describe('field practice levels', () => {
     const result = executeCommand(emptyMlopsState(), 'concepts not-a-concept').result;
     expect(result.ok).toBe(false);
     expect(result.error).toBeTruthy();
+  });
+
+  it('every concept carries an ELI-PHD deep-dive (en is the source of truth)', () => {
+    for (const id of CONCEPT_IDS) {
+      const dd = en.glossary[id]?.deepdive;
+      expect(dd, `en deep-dive missing for ${id}`).toBeTruthy();
+      expect(dd!.length, `en deep-dive too thin for ${id}`).toBeGreaterThanOrEqual(3);
+      expect(dd!.every((l) => l.length > 20), `en deep-dive line too short for ${id}`).toBe(true);
+    }
+  });
+
+  it('the single-term concepts command surfaces the deep-dive', () => {
+    const result = executeCommand(emptyMlopsState(), 'concepts drift').result;
+    const out = result.output || '';
+    expect(out).toContain('Deep dive');
+    const concept = findConcept('drift')!;
+    expect(concept.deepdive).toBeTruthy();
   });
 });

@@ -1,7 +1,7 @@
 import type { CommandResult, MlopsState, ModelRef, Run, ServiceEndpoint } from './types';
 import { fakeMd5, shortMd5 } from './hash';
 import { teachAfterCommand } from './teach';
-import { findConcept, formatConcepts } from './glossary';
+import { findConcept, formatConceptFull, formatConcepts } from './glossary';
 import { tokenize } from './tokenizer';
 import {
   cloneState,
@@ -188,7 +188,7 @@ function executeCommandInner(prev: MlopsState, rawInput: string): { state: Mlops
     if (args.length) {
       const c = findConcept(args.join(' '));
       return c
-        ? { state, result: ok(`${c.title}\n${c.body}`) }
+        ? { state, result: ok(formatConceptFull(c)) }
         : { state, result: fail(`Unknown concept '${args.join(' ')}'. Type \`concepts\`.`) };
     }
     return { state, result: ok(['MLOps mental models (type `concepts <term>` for one):', '', formatConcepts()].join('\n')) };
